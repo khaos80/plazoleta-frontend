@@ -1,0 +1,119 @@
+
+<div class="login-page">
+  <section class="login-card">
+
+    <div class="brand">
+      <div class="brand-icon">P</div>
+      <span>PLAZOLETA</span>
+    </div>
+
+    <div class="heading">
+      <span class="eyebrow">BIENVENIDO</span>
+      <h1>Iniciar sesión</h1>
+
+      <p>
+        Accede a tu cuenta para gestionar tus pedidos
+        y disfrutar de nuestros servicios.
+      </p>
+    </div>
+
+    @if (registroExitoso) {
+      <div class="registro-exitoso" role="status">
+        Cuenta creada correctamente.
+        Ya puedes iniciar sesión.
+      </div>
+    }
+
+    <form
+      (ngSubmit)="iniciarSesion()"
+      #loginForm="ngForm"
+      novalidate
+    >
+
+      <!-- Correo -->
+      <div class="field">
+        <label for="correo">
+          Correo electrónico
+          <span class="required">*</span>
+        </label>
+
+        <input
+          id="correo"
+          name="correo"
+          type="email"
+          [(ngModel)]="correo"
+          #correoControl="ngModel"
+          placeholder="correo@ejemplo.com"
+          autocomplete="username"
+          required
+          email
+          [class.input-error]="correoControl.invalid && (correoControl.dirty || correoControl.touched)"
+          [class.input-success]="correoControl.valid && correoControl.dirty"
+          [attr.aria-invalid]="correoControl.invalid && (correoControl.dirty || correoControl.touched)"
+        />
+
+        @if (correoControl.invalid && (correoControl.dirty || correoControl.touched)) {
+          <small class="field-error">
+            @if (correoControl.errors?.['required']) {
+              El correo electrónico es obligatorio.
+            } @else if (correoControl.errors?.['email']) {
+              Ingresa un correo electrónico válido.
+            }
+          </small>
+        }
+      </div>
+
+      <!-- Contraseña -->
+      <div class="field">
+        <label for="contrasena">
+          Contraseña
+          <span class="required">*</span>
+        </label>
+
+        <input
+          id="contrasena"
+          name="contrasena"
+          type="password"
+          [(ngModel)]="contrasena"
+          #contrasenaControl="ngModel"
+          placeholder="Ingresa tu contraseña"
+          autocomplete="current-password"
+          required
+          [class.input-error]="contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)"
+          [class.input-success]="contrasenaControl.valid && contrasenaControl.dirty"
+          [attr.aria-invalid]="contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)"
+        />
+
+        @if (contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)) {
+          <small class="field-error">
+            La contraseña es obligatoria.
+          </small>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="error-message" role="alert">
+          {{ error() }}
+        </div>
+      }
+
+      <button
+        type="submit"
+        [disabled]="cargando() || loginForm.invalid"
+      >
+        {{ cargando() ? 'Iniciando sesión...' : 'Ingresar' }}
+      </button>
+
+    </form>
+
+    <p class="registro-link">
+      ¿No tienes una cuenta?
+      <a routerLink="/registro">Regístrate aquí</a>
+    </p>
+
+    <p class="footer-text">
+      Plataforma de gestión de restaurantes y pedidos
+    </p>
+
+  </section>
+</div>

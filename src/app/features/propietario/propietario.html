@@ -1,0 +1,1032 @@
+
+<div class="propietario-page">
+  <header class="topbar">
+    <div class="marca">
+      <span class="marca-icono">P</span>
+      <div>
+        <strong>PLAZOLETA</strong>
+        <small>Administración de restaurantes</small>
+      </div>
+    </div>
+
+    <div class="topbar-acciones">
+      <span class="etiqueta-rol">PROPIETARIO</span>
+      <button type="button" class="btn-secundario" (click)="cerrarSesion()">
+        Cerrar sesión
+      </button>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <section class="bienvenida">
+      <span class="etiqueta">GESTIÓN COMERCIAL</span>
+      <h1>Panel del propietario</h1>
+      <p>
+        Administra el menú, registra empleados y consulta
+        el rendimiento de tus establecimientos.
+      </p>
+    </section>
+
+    <section class="panel selector-restaurante">
+      <div class="titulo-seccion">
+        <div>
+          <span class="sobre-titulo">01 · ESTABLECIMIENTO</span>
+          <h2>Seleccionar restaurante</h2>
+          <p>Introduce el ID de un restaurante de tu propiedad.</p>
+        </div>
+
+        @if (restauranteActivo() !== null) {
+          <span class="etiqueta-verificado">
+            Restaurante #{{ restauranteActivo() }} verificado
+          </span>
+        }
+      </div>
+
+      <form class="restaurante-form" (ngSubmit)="verificarRestaurante()" novalidate>
+        <div class="campo">
+          <label for="restauranteId">
+            ID del restaurante <span class="required">*</span>
+          </label>
+          <input
+            id="restauranteId"
+            name="restauranteId"
+            type="text"
+            inputmode="numeric"
+            placeholder="Ej. 1"
+            [ngModel]="restauranteId()"
+            (ngModelChange)="cambiarRestauranteId($event)"
+            (blur)="restauranteTocado.set(true)"
+            [class.input-error]="restauranteTocado() && !!errorIdRestaurante()"
+            [disabled]="verificandoRestaurante() || guardandoEmpleado() || guardando()"
+          />
+          @if (restauranteTocado() && errorIdRestaurante()) {
+            <small class="field-error">{{ errorIdRestaurante() }}</small>
+          }
+        </div>
+
+        <button
+          type="submit"
+          class="btn-principal"
+          [disabled]="!!errorIdRestaurante() || verificandoRestaurante() || guardandoEmpleado() || guardando()"
+        >
+          {{ verificandoRestaurante() ? 'Verificando...' : 'Acceder al restaurante' }}
+        </button>
+      </form>
+
+      @if (errorRestaurante()) {
+        <div class="alerta error" role="alert">{{ errorRestaurante() }}</div>
+      }
+    </section>
+
+    @if (restauranteActivo() !== null) {
+      <section class="resumen">
+        <div class="resumen-card">
+          <span>Restaurante seleccionado</span>
+          <strong>#{{ restauranteActivo() }}</strong>
+          <small>Propiedad verificada</small>
+        </div>
+        <div class="resumen-card">
+          <span>Platos disponibles</span>
+          <strong>{{ totalElementos() }}</strong>
+          <small>Según el microservicio</small>
+        </div>
+        <div class="resumen-card">
+          <span>Platos deshabilitados</span>
+          <strong>{{ platosDeshabilitados().length }}</strong>
+          <small>Referencias locales</small>
+        </div>
+      </section>
+
+      <nav class="pestanas" aria-label="Secciones del propietario">
+        <button
+          type="button"
+          [class.activa]="seccion() === 'platos'"
+          (click)="seleccionarSeccion('platos')"
+        >
+          01 · Gestión de platos
+        </button>
+
+        <button
+          type="button"
+          [class.activa]="seccion() === 'empleados'"
+          (click)="seleccionarSeccion('empleados')"
+        >
+          02 · Gestión de empleados
+        </button>
+
+        <button
+          type="button"
+          [class.activa]="seccion() === 'estadisticas'"
+          (click)="seleccionarSeccion('estadisticas')"
+        >
+          03 · Estadísticas
+        </button>
+      </nav>
+
+      @if (mensajeExito()) {
+        <div class="alerta exito" role="status">{{ mensajeExito() }}</div>
+      }
+
+      @if (errorOperacion()) {
+        <div class="alerta error" role="alert">{{ errorOperacion() }}</div>
+      }
+
+      @if (operacionIndeterminada()) {
+        <div class="alerta advertencia" role="alert">
+          <strong>Resultado no confirmado</strong>
+          <p>
+            No fue posible confirmar la
+            {{ descripcionOperacionIncierta() }}.
+            Verifica el resultado antes de repetir la solicitud.
+            La consulta de platos no muestra los inactivos
+            y el backend no dispone de un listado general de empleados.
+          </p>
+          <button
+            type="button"
+            class="btn-secundario"
+            (click)="revisarEstadoActual()"
+          >
+            Ya revisé el resultado
+          </button>
+        </div>
+      }
+
+      <!-- SECCIÓN 1: PLATOS -->
+
+      @if (seccion() === 'platos') {
+        <section class="panel">
+          <div class="titulo-seccion">
+            <div>
+              <span class="sobre-titulo">02 · MENÚ</span>
+              <h2>Gestión de platos</h2>
+              <p>Administra precios, disponibilidad y nuevos productos.</p>
+            </div>
+          </div>
+
+          <nav class="subpestanas" aria-label="Apartados de platos">
+            <button
+              type="button"
+              [class.activa]="apartado() === 'disponibles'"
+              (click)="seleccionarApartado('disponibles')"
+            >
+              Platos disponibles
+            </button>
+
+            <button
+              type="button"
+              [class.activa]="apartado() === 'deshabilitados'"
+              (click)="seleccionarApartado('deshabilitados')"
+            >
+              Deshabilitados
+              <span class="contador">{{ platosDeshabilitados().length }}</span>
+            </button>
+
+            <button
+              type="button"
+              [class.activa]="apartado() === 'crear'"
+              (click)="seleccionarApartado('crear')"
+            >
+              + Crear plato
+            </button>
+          </nav>
+
+          @if (apartado() === 'disponibles') {
+            <div class="herramientas">
+              <div class="campo">
+                <label for="buscarPlato">Buscar en esta página</label>
+                <input
+                  id="buscarPlato"
+                  type="search"
+                  placeholder="Nombre, descripción o ID"
+                  [ngModel]="busqueda()"
+                  (ngModelChange)="cambiarBusqueda($event)"
+                />
+              </div>
+
+              <div class="campo">
+                <label for="categoriaFiltro">Categoría</label>
+                <select
+                  id="categoriaFiltro"
+                  [ngModel]="categoriaFiltro()"
+                  (ngModelChange)="cambiarCategoria($event)"
+                >
+                  <option value="">Todas las categorías</option>
+                  @for (categoria of categorias(); track categoria) {
+                    <option [value]="categoria">{{ categoria }}</option>
+                  }
+                </select>
+              </div>
+
+              <button
+                type="button"
+                class="btn-secundario"
+                [disabled]="cargandoPlatos()"
+                (click)="cargarPlatos(pagina())"
+              >
+                {{ cargandoPlatos() ? 'Cargando...' : 'Actualizar' }}
+              </button>
+            </div>
+
+            <p class="nota-alcance">
+              La búsqueda se aplica únicamente a los resultados de la página cargada.
+            </p>
+
+            @if (errorPlatos()) {
+              <div class="alerta error" role="alert">{{ errorPlatos() }}</div>
+            }
+
+            @if (cargandoPlatos()) {
+              <div class="estado-vacio">Consultando platos...</div>
+            } @else if (!errorPlatos() && !platosFiltrados().length) {
+              <div class="estado-vacio">
+                No hay platos disponibles que coincidan con los filtros.
+              </div>
+            } @else if (!errorPlatos()) {
+              <div class="platos-grid">
+                @for (plato of platosFiltrados(); track plato.id) {
+                  <article class="plato-card">
+                    <div class="imagen-plato">
+                      @if (plato.urlImagen && !imagenesFallidas()[plato.id]) {
+                        <img
+                          [src]="plato.urlImagen"
+                          [alt]="plato.nombre"
+                          loading="lazy"
+                          (error)="marcarImagenFallida(plato.id)"
+                        />
+                      } @else {
+                        <div class="imagen-alternativa">
+                          <strong>{{ plato.nombre.charAt(0).toUpperCase() }}</strong>
+                          <small>Imagen no disponible</small>
+                        </div>
+                      }
+                      <span class="id-imagen">ID #{{ plato.id }}</span>
+                    </div>
+
+                    <div class="plato-contenido">
+                      <div class="plato-encabezado">
+                        <span class="categoria">{{ plato.categoria }}</span>
+                        <span
+                          class="estado-plato"
+                          [class.inactivo]="!plato.activo"
+                        >
+                          {{ plato.activo ? 'Disponible' : 'Deshabilitado' }}
+                        </span>
+                      </div>
+
+                      <h3>{{ plato.nombre }}</h3>
+                      <p class="descripcion">{{ plato.descripcion }}</p>
+
+                      <div class="detalle-plato">
+                        <span>Precio</span>
+                        <strong class="precio">
+                          {{ plato.precio | currency:'COP':'symbol':'1.0-0' }}
+                        </strong>
+                      </div>
+
+                      <div class="acciones-plato">
+                        <button
+                          type="button"
+                          class="btn-secundario"
+                          [disabled]="procesandoId() !== null || operacionIndeterminada()"
+                          (click)="abrirEditar(plato)"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-estado"
+                          [disabled]="procesandoId() !== null || operacionIndeterminada()"
+                          (click)="cambiarEstado(plato)"
+                        >
+                          {{
+                            procesandoId() === plato.id
+                              ? 'Procesando...'
+                              : plato.activo ? 'Deshabilitar' : 'Habilitar'
+                          }}
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-peligro"
+                          [disabled]="procesandoId() !== null || operacionIndeterminada()"
+                          (click)="eliminarPlato(plato)"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+
+            @if (totalPaginas() > 1) {
+              <div class="paginacion">
+                <button
+                  type="button"
+                  [disabled]="pagina() === 0 || cargandoPlatos()"
+                  (click)="cargarPlatos(pagina() - 1)"
+                >
+                  Anterior
+                </button>
+                <span>Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+                <button
+                  type="button"
+                  [disabled]="pagina() + 1 >= totalPaginas() || cargandoPlatos()"
+                  (click)="cargarPlatos(pagina() + 1)"
+                >
+                  Siguiente
+                </button>
+              </div>
+            }
+          }
+
+          @if (apartado() === 'deshabilitados') {
+            <div class="nota-informativa">
+              <strong>Recuperación de platos</strong>
+              <p>
+                El backend no lista platos inactivos. Aquí aparecen
+                los registros guardados en este navegador y puedes
+                habilitar manualmente un plato por su ID.
+              </p>
+            </div>
+
+            @if (platosDeshabilitados().length) {
+              <div class="recuperacion-grid">
+                @for (plato of platosDeshabilitados(); track plato.id) {
+                  <article class="recuperacion-card">
+                    <div>
+                      <span class="categoria">{{ plato.categoria }}</span>
+                      <h3>{{ plato.nombre }}</h3>
+                      <p>ID: <strong>#{{ plato.id }}</strong></p>
+                      <p>
+                        Precio:
+                        {{ plato.precio | currency:'COP':'symbol':'1.0-0' }}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn-principal"
+                      [disabled]="procesandoId() !== null || operacionIndeterminada()"
+                      (click)="habilitarPorId(plato.id)"
+                    >
+                      Volver a habilitar
+                    </button>
+                  </article>
+                }
+              </div>
+            } @else {
+              <div class="estado-vacio">
+                No hay referencias locales de platos deshabilitados.
+              </div>
+            }
+
+            <form
+              class="formulario-recuperacion"
+              (ngSubmit)="recuperarIdManual()"
+              novalidate
+            >
+              <div class="campo">
+                <label for="idRecuperacion">Habilitar plato por ID</label>
+                <input
+                  id="idRecuperacion"
+                  name="idRecuperacion"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="Ej. 3"
+                  [ngModel]="idRecuperacion()"
+                  (ngModelChange)="idRecuperacion.set($event)"
+                />
+                <small class="field-help">
+                  Introduce únicamente IDs del restaurante seleccionado.
+                </small>
+              </div>
+              <button
+                type="submit"
+                class="btn-principal"
+                [disabled]="procesandoId() !== null || operacionIndeterminada()"
+              >
+                Solicitar habilitación
+              </button>
+            </form>
+          }
+
+          @if (apartado() === 'crear') {
+            <div class="subtitulo-formulario">
+              <h3>Registrar nuevo plato</h3>
+              <p>Completa los datos que aparecerán en el menú.</p>
+            </div>
+
+            <form (ngSubmit)="guardarPlato()" novalidate>
+              <div class="form-grid">
+                <div class="campo">
+                  <label for="crearNombre">
+                    Nombre <span class="required">*</span>
+                  </label>
+                  <input
+                    id="crearNombre"
+                    name="nombre"
+                    type="text"
+                    placeholder="Ej. Hamburguesa artesanal"
+                    [ngModel]="formulario().nombre"
+                    (ngModelChange)="cambiarCampo('nombre', $event)"
+                    (blur)="tocarCampo('nombre')"
+                  />
+                  @if (tocados()['nombre'] && errorCampo('nombre')) {
+                    <small class="field-error">{{ errorCampo('nombre') }}</small>
+                  }
+                </div>
+
+                <div class="campo">
+                  <label for="crearPrecio">
+                    Precio (COP) <span class="required">*</span>
+                  </label>
+                  <input
+                    id="crearPrecio"
+                    name="precio"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="Ej. 25000"
+                    [ngModel]="formulario().precio"
+                    (ngModelChange)="cambiarCampo('precio', $event)"
+                    (blur)="tocarCampo('precio')"
+                  />
+                  @if (tocados()['precio'] && errorCampo('precio')) {
+                    <small class="field-error">{{ errorCampo('precio') }}</small>
+                  }
+                </div>
+
+                <div class="campo">
+                  <label for="crearCategoria">
+                    Categoría <span class="required">*</span>
+                  </label>
+                  <input
+                    id="crearCategoria"
+                    name="categoria"
+                    type="text"
+                    placeholder="Ej. Platos fuertes"
+                    [ngModel]="formulario().categoria"
+                    (ngModelChange)="cambiarCampo('categoria', $event)"
+                    (blur)="tocarCampo('categoria')"
+                  />
+                  @if (tocados()['categoria'] && errorCampo('categoria')) {
+                    <small class="field-error">{{ errorCampo('categoria') }}</small>
+                  }
+                </div>
+
+                <div class="campo">
+                  <label for="crearImagen">
+                    URL de imagen <span class="required">*</span>
+                  </label>
+                  <input
+                    id="crearImagen"
+                    name="urlImagen"
+                    type="url"
+                    placeholder="https://ejemplo.com/plato.jpg"
+                    [ngModel]="formulario().urlImagen"
+                    (ngModelChange)="cambiarCampo('urlImagen', $event)"
+                    (blur)="tocarCampo('urlImagen')"
+                  />
+                  @if (tocados()['urlImagen'] && errorCampo('urlImagen')) {
+                    <small class="field-error">{{ errorCampo('urlImagen') }}</small>
+                  }
+                </div>
+
+                <div class="campo campo-ancho">
+                  <label for="crearDescripcion">
+                    Descripción <span class="required">*</span>
+                  </label>
+                  <textarea
+                    id="crearDescripcion"
+                    name="descripcion"
+                    rows="4"
+                    placeholder="Describe el plato."
+                    [ngModel]="formulario().descripcion"
+                    (ngModelChange)="cambiarCampo('descripcion', $event)"
+                    (blur)="tocarCampo('descripcion')"
+                  ></textarea>
+                  @if (tocados()['descripcion'] && errorCampo('descripcion')) {
+                    <small class="field-error">
+                      {{ errorCampo('descripcion') }}
+                    </small>
+                  }
+                </div>
+              </div>
+
+              @if (errorFormulario()) {
+                <div class="alerta error" role="alert">{{ errorFormulario() }}</div>
+              }
+
+              <div class="acciones-formulario">
+                <button
+                  type="button"
+                  class="btn-secundario"
+                  [disabled]="guardando()"
+                  (click)="seleccionarApartado('disponibles')"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="btn-principal"
+                  [disabled]="guardando() || operacionIndeterminada()"
+                >
+                  {{ guardando() ? 'Guardando...' : 'Crear plato' }}
+                </button>
+              </div>
+            </form>
+          }
+        </section>
+      }
+
+      <!-- SECCIÓN 2: EMPLEADOS -->
+
+      @if (seccion() === 'empleados') {
+        <section class="panel">
+          <div class="titulo-seccion">
+            <div>
+              <span class="sobre-titulo">03 · EQUIPO DE TRABAJO</span>
+              <h2>Registrar empleado</h2>
+              <p>
+                Crea una cuenta de empleado vinculada
+                al restaurante seleccionado.
+              </p>
+            </div>
+            <span class="etiqueta-verificado">
+              Restaurante #{{ restauranteActivo() }}
+            </span>
+          </div>
+
+          <div class="nota-informativa">
+            <strong>Asignación automática</strong>
+            <p>
+              El empleado se asociará al restaurante
+              #{{ restauranteActivo() }} y tendrá el rol EMPLEADO.
+              No necesitas ingresar nuevamente el identificador.
+            </p>
+          </div>
+
+          <form (ngSubmit)="registrarEmpleado()" novalidate>
+            <div class="subtitulo-formulario">
+              <h3>Información personal</h3>
+              <p>Los campos marcados con * son obligatorios.</p>
+            </div>
+
+            <div class="form-grid">
+              <div class="campo">
+                <label for="empNombre">
+                  Nombre <span class="required">*</span>
+                </label>
+                <input
+                  id="empNombre"
+                  name="empNombre"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Ej. Miguel"
+                  [ngModel]="empleado().nombre"
+                  (ngModelChange)="cambiarEmpleado('nombre', $event)"
+                  (blur)="tocarEmpleado('nombre')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['nombre'] && !!errorCampoEmpleado('nombre')"
+                />
+                @if (tocadosEmpleado()['nombre'] && errorCampoEmpleado('nombre')) {
+                  <small class="field-error">{{ errorCampoEmpleado('nombre') }}</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="empApellido">
+                  Apellido <span class="required">*</span>
+                </label>
+                <input
+                  id="empApellido"
+                  name="empApellido"
+                  type="text"
+                  placeholder="Ej. Torres"
+                  [ngModel]="empleado().apellido"
+                  (ngModelChange)="cambiarEmpleado('apellido', $event)"
+                  (blur)="tocarEmpleado('apellido')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['apellido'] && !!errorCampoEmpleado('apellido')"
+                />
+                @if (tocadosEmpleado()['apellido'] && errorCampoEmpleado('apellido')) {
+                  <small class="field-error">{{ errorCampoEmpleado('apellido') }}</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="empDocumento">
+                  Documento de identidad <span class="required">*</span>
+                </label>
+                <input
+                  id="empDocumento"
+                  name="empDocumento"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="6 a 10 dígitos"
+                  [ngModel]="empleado().documentoIdentidad"
+                  (ngModelChange)="cambiarEmpleado('documentoIdentidad', $event)"
+                  (blur)="tocarEmpleado('documentoIdentidad')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['documentoIdentidad'] && !!errorCampoEmpleado('documentoIdentidad')"
+                />
+                @if (tocadosEmpleado()['documentoIdentidad'] && errorCampoEmpleado('documentoIdentidad')) {
+                  <small class="field-error">
+                    {{ errorCampoEmpleado('documentoIdentidad') }}
+                  </small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="empCelular">
+                  Celular <span class="required">*</span>
+                </label>
+                <input
+                  id="empCelular"
+                  name="empCelular"
+                  type="tel"
+                  placeholder="Ej. 3001234567"
+                  [ngModel]="empleado().celular"
+                  (ngModelChange)="cambiarEmpleado('celular', $event)"
+                  (blur)="tocarEmpleado('celular')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['celular'] && !!errorCampoEmpleado('celular')"
+                />
+                @if (tocadosEmpleado()['celular'] && errorCampoEmpleado('celular')) {
+                  <small class="field-error">{{ errorCampoEmpleado('celular') }}</small>
+                }
+              </div>
+            </div>
+
+            <div class="subtitulo-formulario separador-formulario">
+              <h3>Credenciales de acceso</h3>
+              <p>
+                El empleado utilizará estos datos para iniciar sesión.
+              </p>
+            </div>
+
+            <div class="form-grid">
+              <div class="campo campo-ancho">
+                <label for="empCorreo">
+                  Correo electrónico <span class="required">*</span>
+                </label>
+                <input
+                  id="empCorreo"
+                  name="empCorreo"
+                  type="email"
+                  autocomplete="off"
+                  placeholder="empleado@ejemplo.com"
+                  [ngModel]="empleado().correo"
+                  (ngModelChange)="cambiarEmpleado('correo', $event)"
+                  (blur)="tocarEmpleado('correo')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['correo'] && !!errorCampoEmpleado('correo')"
+                />
+                @if (tocadosEmpleado()['correo'] && errorCampoEmpleado('correo')) {
+                  <small class="field-error">{{ errorCampoEmpleado('correo') }}</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="empClave">
+                  Contraseña <span class="required">*</span>
+                </label>
+                <input
+                  id="empClave"
+                  name="empClave"
+                  [type]="mostrarClaveEmpleado() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
+                  [ngModel]="empleado().clave"
+                  (ngModelChange)="cambiarEmpleado('clave', $event)"
+                  (blur)="tocarEmpleado('clave')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['clave'] && !!errorCampoEmpleado('clave')"
+                />
+                @if (tocadosEmpleado()['clave'] && errorCampoEmpleado('clave')) {
+                  <small class="field-error">{{ errorCampoEmpleado('clave') }}</small>
+                }
+              </div>
+
+              <div class="campo">
+                <label for="empConfirmarClave">
+                  Confirmar contraseña <span class="required">*</span>
+                </label>
+                <input
+                  id="empConfirmarClave"
+                  name="empConfirmarClave"
+                  [type]="mostrarClaveEmpleado() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Repite la contraseña"
+                  [ngModel]="empleado().confirmarClave"
+                  (ngModelChange)="cambiarEmpleado('confirmarClave', $event)"
+                  (blur)="tocarEmpleado('confirmarClave')"
+                  [disabled]="guardandoEmpleado()"
+                  [class.input-error]="tocadosEmpleado()['confirmarClave'] && !!errorCampoEmpleado('confirmarClave')"
+                />
+                @if (tocadosEmpleado()['confirmarClave'] && errorCampoEmpleado('confirmarClave')) {
+                  <small class="field-error">
+                    {{ errorCampoEmpleado('confirmarClave') }}
+                  </small>
+                }
+              </div>
+            </div>
+
+            <label class="opcion-checkbox">
+              <input
+                type="checkbox"
+                [checked]="mostrarClaveEmpleado()"
+                (change)="mostrarClaveEmpleado.set(!mostrarClaveEmpleado())"
+              />
+              Mostrar contraseñas
+            </label>
+
+            @if (errorEmpleado()) {
+              <div class="alerta error" role="alert">
+                <strong>No fue posible registrar al empleado</strong>
+                <p>{{ errorEmpleado() }}</p>
+              </div>
+            }
+
+            @if (exitoEmpleado()) {
+              <div class="alerta exito" role="status">
+                <strong>Empleado registrado correctamente</strong>
+                <p>{{ exitoEmpleado() }}</p>
+              </div>
+            }
+
+            <div class="acciones-formulario">
+              <span class="texto-acciones">
+                El microservicio confirma la creación, pero no devuelve
+                el ID del empleado.
+              </span>
+
+              <button
+                type="button"
+                class="btn-secundario"
+                [disabled]="guardandoEmpleado()"
+                (click)="limpiarEmpleado()"
+              >
+                Limpiar
+              </button>
+
+              <button
+                type="submit"
+                class="btn-principal"
+                [disabled]="guardandoEmpleado() || operacionIndeterminada()"
+              >
+                {{
+                  guardandoEmpleado()
+                    ? 'Registrando empleado...'
+                    : 'Registrar empleado'
+                }}
+              </button>
+            </div>
+          </form>
+        </section>
+      }
+
+      <!-- SECCIÓN 3: ESTADÍSTICAS -->
+
+      @if (seccion() === 'estadisticas') {
+        <section class="panel">
+          <div class="titulo-seccion">
+            <div>
+              <span class="sobre-titulo">04 · RENDIMIENTO</span>
+              <h2>Estadísticas de eficiencia</h2>
+              <p>Indicadores de pedidos y tiempos de preparación.</p>
+            </div>
+
+            <button
+              type="button"
+              class="btn-secundario"
+              [disabled]="cargandoEstadisticas()"
+              (click)="cargarEstadisticas()"
+            >
+              Actualizar
+            </button>
+          </div>
+
+          @if (errorEstadisticas()) {
+            <div class="alerta error" role="alert">
+              {{ errorEstadisticas() }}
+            </div>
+          }
+
+          @if (cargandoEstadisticas()) {
+            <div class="estado-vacio">Cargando estadísticas...</div>
+          } @else if (!errorEstadisticas()) {
+            <div class="indicadores">
+              <div class="indicador">
+                <span>Pedidos registrados</span>
+                <strong>{{ eficienciaPedidos().length }}</strong>
+              </div>
+              <div class="indicador">
+                <span>Preparación promedio</span>
+                <strong>{{ formatearTiempo(promedioPreparacion()) }}</strong>
+              </div>
+              <div class="indicador">
+                <span>Tiempo total promedio</span>
+                <strong>{{ formatearTiempo(promedioTotal()) }}</strong>
+              </div>
+              <div class="indicador">
+                <span>Empleados en ranking</span>
+                <strong>{{ ranking().length }}</strong>
+              </div>
+            </div>
+
+            <h3 class="subtitulo">Ranking de empleados</h3>
+
+            <div class="tabla-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Posición</th>
+                    <th>Empleado</th>
+                    <th>Pedidos completados</th>
+                    <th>Preparación promedio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (
+                    empleado of ranking();
+                    track empleado.empleadoId;
+                    let i = $index
+                  ) {
+                    <tr>
+                      <td>{{ i + 1 }}</td>
+                      <td>#{{ empleado.empleadoId }}</td>
+                      <td>{{ empleado.pedidosCompletados }}</td>
+                      <td>
+                        {{
+                          formatearTiempo(
+                            empleado.tiempoPromedioPreparacionSegundos
+                          )
+                        }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="sin-datos">
+                        No hay empleados con tiempos registrados.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="subtitulo">Eficiencia por pedido</h3>
+
+            <div class="tabla-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Empleado</th>
+                    <th>Estado</th>
+                    <th>Preparación</th>
+                    <th>Tiempo total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (
+                    pedido of eficienciaPedidos();
+                    track pedido.pedidoId
+                  ) {
+                    <tr>
+                      <td>#{{ pedido.pedidoId }}</td>
+                      <td>
+                        {{
+                          pedido.empleadoId !== null
+                            ? '#' + pedido.empleadoId
+                            : 'Sin asignar'
+                        }}
+                      </td>
+                      <td>{{ pedido.estado }}</td>
+                      <td>
+                        {{
+                          formatearTiempo(
+                            pedido.tiempoPreparacionSegundos
+                          )
+                        }}
+                      </td>
+                      <td>
+                        {{
+                          formatearTiempo(
+                            pedido.tiempoTotalSegundos
+                          )
+                        }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="sin-datos">
+                        No hay pedidos con datos de eficiencia.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      }
+    }
+  </main>
+
+  <!-- MODAL DE EDICIÓN -->
+
+  @if (modoFormulario() === 'editar') {
+    <div class="modal-fondo">
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tituloEditarPlato"
+      >
+        <div class="modal-cabecera">
+          <div>
+            <span class="sobre-titulo">MODIFICACIÓN DE PLATO</span>
+            <h2 id="tituloEditarPlato">{{ platoEditando()?.nombre }}</h2>
+          </div>
+          <button
+            type="button"
+            class="btn-cerrar"
+            [disabled]="guardando()"
+            (click)="cerrarFormulario()"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+
+        <p class="nota-alcance">
+          El backend permite modificar únicamente precio y descripción.
+        </p>
+
+        <form (ngSubmit)="guardarPlato()" novalidate>
+          <div class="campo">
+            <label for="editarPrecio">
+              Precio (COP) <span class="required">*</span>
+            </label>
+            <input
+              id="editarPrecio"
+              name="precio"
+              type="text"
+              inputmode="numeric"
+              [ngModel]="formulario().precio"
+              (ngModelChange)="cambiarCampo('precio', $event)"
+              (blur)="tocarCampo('precio')"
+            />
+            @if (tocados()['precio'] && errorCampo('precio')) {
+              <small class="field-error">{{ errorCampo('precio') }}</small>
+            }
+          </div>
+
+          <div class="campo">
+            <label for="editarDescripcion">
+              Descripción <span class="required">*</span>
+            </label>
+            <textarea
+              id="editarDescripcion"
+              name="descripcion"
+              rows="5"
+              [ngModel]="formulario().descripcion"
+              (ngModelChange)="cambiarCampo('descripcion', $event)"
+              (blur)="tocarCampo('descripcion')"
+            ></textarea>
+            @if (tocados()['descripcion'] && errorCampo('descripcion')) {
+              <small class="field-error">
+                {{ errorCampo('descripcion') }}
+              </small>
+            }
+          </div>
+
+          @if (errorFormulario()) {
+            <div class="alerta error" role="alert">
+              {{ errorFormulario() }}
+            </div>
+          }
+
+          <div class="modal-acciones">
+            <button
+              type="button"
+              class="btn-secundario"
+              [disabled]="guardando()"
+              (click)="cerrarFormulario()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="btn-principal"
+              [disabled]="guardando() || operacionIndeterminada()"
+            >
+              {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+</div>

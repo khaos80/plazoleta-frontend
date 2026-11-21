@@ -1,0 +1,715 @@
+
+<div class="cliente-page">
+  <header class="topbar">
+    <div class="marca">
+      <span class="marca-icono">P</span>
+      <div>
+        <strong>PLAZOLETA</strong>
+        <small>Experiencia del cliente</small>
+      </div>
+    </div>
+
+    <div class="topbar-acciones">
+      <span class="etiqueta-rol">CLIENTE</span>
+      <button
+        type="button"
+        class="btn-secundario"
+        (click)="cerrarSesion()"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <section class="bienvenida">
+      <span class="etiqueta">EXPLORA Y ORDENA</span>
+      <h1>¿Qué deseas comer hoy?</h1>
+      <p>
+        Descubre restaurantes, elige tus platos favoritos
+        y sigue el estado de tus pedidos.
+      </p>
+    </section>
+
+    <nav class="pestanas" aria-label="Secciones del cliente">
+      <button
+        type="button"
+        [class.activa]="seccion() === 'catalogo'"
+        (click)="seleccionarSeccion('catalogo')"
+      >
+        01 · Restaurantes y pedidos
+      </button>
+
+      <button
+        type="button"
+        [class.activa]="seccion() === 'seguimiento'"
+        (click)="seleccionarSeccion('seguimiento')"
+      >
+        02 · Seguimiento de pedidos
+      </button>
+    </nav>
+
+    @if (seccion() === 'catalogo') {
+      <div class="layout">
+        <div class="catalogo">
+          <!-- RESTAURANTES -->
+
+          <section class="panel">
+            <div class="titulo-seccion">
+              <div>
+                <span class="sobre-titulo">PASO 01</span>
+                <h2>Selecciona un restaurante</h2>
+                <p>
+                  Explora los establecimientos disponibles
+                  en la plazoleta.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="btn-secundario"
+                [disabled]="cargandoRestaurantes()"
+                (click)="cargarRestaurantes(paginaRestaurantes())"
+              >
+                Actualizar
+              </button>
+            </div>
+
+            @if (errorRestaurantes()) {
+              <div class="alerta error" role="alert">
+                {{ errorRestaurantes() }}
+              </div>
+            }
+
+            @if (cargandoRestaurantes()) {
+              <div class="estado-vacio">
+                Cargando restaurantes...
+              </div>
+            } @else if (!restaurantes().length && !errorRestaurantes()) {
+              <div class="estado-vacio">
+                No hay restaurantes disponibles.
+              </div>
+            } @else if (!errorRestaurantes()) {
+              <div class="restaurantes-grid">
+                @for (item of restaurantes(); track item.id) {
+                  <button
+                    type="button"
+                    class="restaurante-card"
+                    [class.seleccionado]="restaurante()?.id === item.id"
+                    [disabled]="enviando() || envioIndeterminado() || verificando().length > 0"
+                    (click)="seleccionarRestaurante(item)"
+                  >
+                    <div class="restaurante-logo">
+                      @if (item.urlLogo) {
+                        <img
+                          [src]="item.urlLogo"
+                          [alt]="item.nombre"
+                          loading="lazy"
+                        />
+                      } @else {
+                        <span>{{ item.nombre.charAt(0).toUpperCase() }}</span>
+                      }
+                    </div>
+
+                    <strong>{{ item.nombre }}</strong>
+                    <small>Restaurante #{{ item.id }}</small>
+
+                    <span class="accion-restaurante">
+                      {{
+                        restaurante()?.id === item.id
+                          ? 'Seleccionado'
+                          : 'Ver menú'
+                      }}
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (totalPaginasRestaurantes() > 1) {
+              <div class="paginacion">
+                <button
+                  type="button"
+                  [disabled]="paginaRestaurantes() === 0 || cargandoRestaurantes()"
+                  (click)="cargarRestaurantes(paginaRestaurantes() - 1)"
+                >
+                  Anterior
+                </button>
+
+                <span>
+                  Página {{ paginaRestaurantes() + 1 }}
+                  de {{ totalPaginasRestaurantes() }}
+                </span>
+
+                <button
+                  type="button"
+                  [disabled]="paginaRestaurantes() + 1 >= totalPaginasRestaurantes() || cargandoRestaurantes()"
+                  (click)="cargarRestaurantes(paginaRestaurantes() + 1)"
+                >
+                  Siguiente
+                </button>
+              </div>
+            }
+          </section>
+
+          <!-- MENÚ -->
+
+          @if (restaurante(); as seleccionado) {
+            <section class="panel">
+              <div class="titulo-seccion">
+                <div>
+                  <span class="sobre-titulo">PASO 02</span>
+                  <h2>Menú de {{ seleccionado.nombre }}</h2>
+                  <p>
+                    Selecciona los platos que deseas agregar
+                    a tu pedido.
+                  </p>
+                </div>
+              </div>
+
+              <div class="herramientas-menu">
+                <div class="campo">
+                  <label for="buscarPlato">
+                    Buscar en esta página
+                  </label>
+                  <input
+                    id="buscarPlato"
+                    type="search"
+                    placeholder="Nombre, categoría o descripción"
+                    [ngModel]="busquedaPlatos()"
+                    (ngModelChange)="busquedaPlatos.set($event)"
+                  />
+                </div>
+
+                <div class="campo">
+                  <label for="categoria">
+                    Filtrar por categoría
+                  </label>
+                  <input
+                    id="categoria"
+                    name="categoria"
+                    type="text"
+                    placeholder="Ej. Hamburguesas"
+                    [ngModel]="categoria()"
+                    (ngModelChange)="cambiarCategoria($event)"
+                    (keyup.enter)="aplicarCategoria()"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-principal"
+                  [disabled]="cargandoPlatos()"
+                  (click)="aplicarCategoria()"
+                >
+                  Aplicar filtro
+                </button>
+              </div>
+
+              <p class="nota-alcance">
+                La categoría se consulta en el backend.
+                La búsqueda por texto filtra únicamente
+                los platos de la página actual.
+              </p>
+
+              @if (errorPlatos()) {
+                <div class="alerta error" role="alert">
+                  {{ errorPlatos() }}
+                </div>
+              }
+
+              @if (cargandoPlatos()) {
+                <div class="estado-vacio">
+                  Cargando menú...
+                </div>
+              } @else if (!platosFiltrados().length && !errorPlatos()) {
+                <div class="estado-vacio">
+                  No se encontraron platos con estos filtros.
+                </div>
+              } @else if (!errorPlatos()) {
+                <div class="platos-grid">
+                  @for (plato of platosFiltrados(); track plato.id) {
+                    <article class="plato-card">
+                      <div class="imagen-plato">
+                        @if (
+                          plato.urlImagen &&
+                          !imagenesFallidas()[plato.id]
+                        ) {
+                          <img
+                            [src]="plato.urlImagen"
+                            [alt]="plato.nombre"
+                            loading="lazy"
+                            (error)="marcarImagenFallida(plato.id)"
+                          />
+                        } @else {
+                          <div class="imagen-alternativa">
+                            <strong>
+                              {{ plato.nombre.charAt(0).toUpperCase() }}
+                            </strong>
+                            <small>Imagen no disponible</small>
+                          </div>
+                        }
+
+                        <span class="id-imagen">
+                          Plato #{{ plato.id }}
+                        </span>
+                      </div>
+
+                      <div class="plato-info">
+                        <span class="categoria">
+                          {{ plato.categoria }}
+                        </span>
+
+                        <h3>{{ plato.nombre }}</h3>
+                        <p class="descripcion">
+                          {{ plato.descripcion }}
+                        </p>
+
+                        <strong class="precio">
+                          {{
+                            plato.precio |
+                            currency:'COP':'symbol':'1.0-0'
+                          }}
+                        </strong>
+
+                        @if (plato.activo && !plato.eliminado) {
+                          <span class="disponible">
+                            Disponible
+                          </span>
+
+                          <div class="campo cantidad-control">
+                            <label [for]="'cantidad-' + plato.id">
+                              Cantidad
+                              <span class="required">*</span>
+                            </label>
+
+                            <input
+                              [id]="'cantidad-' + plato.id"
+                              type="number"
+                              min="1"
+                              max="99"
+                              step="1"
+                              [ngModel]="cantidades()[plato.id] ?? '1'"
+                              (ngModelChange)="cambiarCantidad(plato.id, $event)"
+                              [class.input-error]="cantidadesTocadas()[plato.id] && !!errorCantidad(plato.id)"
+                            />
+
+                            @if (
+                              cantidadesTocadas()[plato.id] &&
+                              errorCantidad(plato.id)
+                            ) {
+                              <small class="field-error">
+                                {{ errorCantidad(plato.id) }}
+                              </small>
+                            }
+                          </div>
+
+                          <button
+                            type="button"
+                            class="btn-principal agregar-btn"
+                            [disabled]="!!errorCantidad(plato.id) || verificando().includes(plato.id) || enviando() || envioIndeterminado()"
+                            (click)="agregar(plato)"
+                          >
+                            {{
+                              verificando().includes(plato.id)
+                                ? 'Verificando...'
+                                : 'Agregar al carrito'
+                            }}
+                          </button>
+                        } @else {
+                          <span class="no-disponible">
+                            No disponible
+                          </span>
+                        }
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
+
+              @if (totalPaginasPlatos() > 1) {
+                <div class="paginacion">
+                  <button
+                    type="button"
+                    [disabled]="paginaPlatos() === 0 || cargandoPlatos()"
+                    (click)="cargarPlatos(paginaPlatos() - 1)"
+                  >
+                    Anterior
+                  </button>
+
+                  <span>
+                    Página {{ paginaPlatos() + 1 }}
+                    de {{ totalPaginasPlatos() }}
+                  </span>
+
+                  <button
+                    type="button"
+                    [disabled]="paginaPlatos() + 1 >= totalPaginasPlatos() || cargandoPlatos()"
+                    (click)="cargarPlatos(paginaPlatos() + 1)"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              }
+            </section>
+          } @else {
+            <section class="panel estado-vacio">
+              Selecciona un restaurante para visualizar su menú.
+            </section>
+          }
+        </div>
+
+        <!-- CARRITO -->
+
+        <aside class="panel carrito">
+          <div class="titulo-seccion">
+            <div>
+              <span class="sobre-titulo">PASO 03</span>
+              <h2>Tu carrito</h2>
+              <p>
+                {{ totalUnidades() }} unidades seleccionadas
+              </p>
+            </div>
+          </div>
+
+          @if (restaurante(); as seleccionado) {
+            <div class="restaurante-carrito">
+              <span>Restaurante</span>
+              <strong>{{ seleccionado.nombre }}</strong>
+            </div>
+          }
+
+          @if (errorCarrito()) {
+            <div class="alerta error" role="alert">
+              {{ errorCarrito() }}
+            </div>
+          }
+
+          @if (!carrito().length) {
+            <div class="carrito-vacio">
+              <div class="icono-carrito">0</div>
+              <strong>Tu carrito está vacío</strong>
+              <p>Selecciona un plato para comenzar.</p>
+            </div>
+          } @else {
+            <div class="items-carrito">
+              @for (item of carrito(); track item.plato.id) {
+                <div class="item-carrito">
+                  <div class="item-info">
+                    <strong>{{ item.plato.nombre }}</strong>
+                    <small>
+                      {{
+                        item.plato.precio |
+                        currency:'COP':'symbol':'1.0-0'
+                      }}
+                      por unidad
+                    </small>
+                  </div>
+
+                  <div class="item-controles">
+                    <div class="cantidad-carrito">
+                      <button
+                        type="button"
+                        aria-label="Disminuir cantidad"
+                        [disabled]="enviando() || envioIndeterminado()"
+                        (click)="disminuirCantidadCarrito(item.plato.id)"
+                      >
+                        −
+                      </button>
+
+                      <strong>{{ item.cantidad }}</strong>
+
+                      <button
+                        type="button"
+                        aria-label="Aumentar cantidad"
+                        [disabled]="item.cantidad >= 99 || enviando() || envioIndeterminado()"
+                        (click)="aumentarCantidadCarrito(item.plato.id)"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="btn-quitar"
+                      [disabled]="enviando() || envioIndeterminado()"
+                      (click)="quitar(item.plato.id)"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="total">
+              <span>Total estimado</span>
+              <strong>
+                {{
+                  totalPrecio() |
+                  currency:'COP':'symbol':'1.0-0'
+                }}
+              </strong>
+            </div>
+
+            <button
+              type="button"
+              class="btn-vaciar"
+              [disabled]="enviando() || envioIndeterminado()"
+              (click)="vaciar()"
+            >
+              Vaciar carrito
+            </button>
+          }
+
+          @if (errorPedido()) {
+            <div class="alerta error" role="alert">
+              {{ errorPedido() }}
+            </div>
+          }
+
+          @if (exito()) {
+            <div class="alerta exito" role="status">
+              {{ exito() }}
+            </div>
+          }
+
+          <button
+            type="button"
+            class="btn-principal confirmar-btn"
+            [disabled]="!carritoValido() || enviando() || envioIndeterminado()"
+            (click)="crearPedido()"
+          >
+            {{
+              enviando()
+                ? 'Procesando pedido...'
+                : 'Confirmar pedido'
+            }}
+          </button>
+
+          @if (envioIndeterminado()) {
+            <div class="alerta advertencia" role="alert">
+              <strong>Resultado no confirmado</strong>
+              <p>
+                El servidor podría haber creado el pedido.
+                No vuelvas a enviarlo hasta comprobarlo
+                mediante los mecanismos disponibles.
+              </p>
+            </div>
+          }
+
+          @if (ultimoPedido(); as pedido) {
+            <div class="pedido-confirmado">
+              <span class="sobre-titulo">
+                ÚLTIMO PEDIDO
+              </span>
+              <h3>Pedido #{{ pedido.pedidoId }}</h3>
+              <p>Estado: {{ pedido.estado }}</p>
+
+              <button
+                type="button"
+                class="btn-secundario"
+                (click)="consultarUltimoPedido()"
+              >
+                Consultar seguimiento
+              </button>
+            </div>
+          }
+        </aside>
+      </div>
+    }
+
+    <!-- SEGUIMIENTO -->
+
+    @if (seccion() === 'seguimiento') {
+      <section class="panel seguimiento-panel">
+        <div class="titulo-seccion">
+          <div>
+            <span class="sobre-titulo">
+              PASO 04 · SEGUIMIENTO
+            </span>
+            <h2>Consulta tu pedido</h2>
+            <p>
+              Revisa la trazabilidad de un pedido
+              o solicita su cancelación.
+            </p>
+          </div>
+        </div>
+
+        @if (ultimoPedido(); as pedido) {
+          <div class="ultimo-pedido">
+            <div>
+              <span>Último pedido de esta sesión</span>
+              <strong>#{{ pedido.pedidoId }}</strong>
+              <small>{{ pedido.estado }}</small>
+            </div>
+
+            <button
+              type="button"
+              class="btn-secundario"
+              [disabled]="consultando() || cancelando()"
+              (click)="consultarUltimoPedido()"
+            >
+              Consultar este pedido
+            </button>
+          </div>
+        }
+
+        <div class="campo">
+          <label for="pedidoId">
+            Número de pedido
+            <span class="required">*</span>
+          </label>
+
+          <input
+            id="pedidoId"
+            name="pedidoId"
+            type="text"
+            inputmode="numeric"
+            placeholder="Ej. 15"
+            [ngModel]="pedidoIdConsulta()"
+            (ngModelChange)="cambiarIdConsulta($event)"
+            (blur)="consultaTocada.set(true)"
+            [class.input-error]="consultaTocada() && !!errorIdPedido()"
+          />
+
+          @if (consultaTocada() && errorIdPedido()) {
+            <small class="field-error">
+              {{ errorIdPedido() }}
+            </small>
+          }
+        </div>
+
+        <div class="acciones-consulta">
+          <button
+            type="button"
+            class="btn-principal"
+            [disabled]="!!errorIdPedido() || consultando() || cancelando()"
+            (click)="consultarPedido()"
+          >
+            {{
+              consultando()
+                ? 'Consultando...'
+                : 'Consultar trazabilidad'
+            }}
+          </button>
+
+          <button
+            type="button"
+            class="btn-peligro"
+            [disabled]="!!errorIdPedido() || consultando() || cancelando() || cancelacionIndeterminada()"
+            (click)="cancelarPedido()"
+          >
+            {{
+              cancelando()
+                ? 'Cancelando...'
+                : 'Cancelar pedido'
+            }}
+          </button>
+        </div>
+
+        @if (errorConsulta()) {
+          <div class="alerta error" role="alert">
+            {{ errorConsulta() }}
+          </div>
+        }
+
+        @if (exitoConsulta()) {
+          <div class="alerta exito" role="status">
+            {{ exitoConsulta() }}
+          </div>
+        }
+
+        @if (cancelacionIndeterminada()) {
+          <div class="alerta advertencia" role="alert">
+            <strong>Cancelación no confirmada</strong>
+            <p>
+              Consulta el estado actual antes de volver
+              a solicitar la cancelación.
+            </p>
+
+            <button
+              type="button"
+              class="btn-secundario"
+              (click)="revisarCancelacion()"
+            >
+              Consultar estado actual
+            </button>
+          </div>
+        }
+
+        @if (seguimiento(); as seguimiento) {
+          <section class="resultado-trazabilidad" aria-label="Seguimiento del pedido">
+            <div class="resultado-cabecera">
+              <div>
+                <span class="sobre-titulo">SEGUIMIENTO DEL PEDIDO</span>
+                <h3>Pedido #{{ seguimiento.pedidoId }}</h3>
+                <p>Consulta el avance de tu pedido en cada etapa.</p>
+              </div>
+              <span class="estado-seguimiento"
+                [class.entregado]="seguimiento.estado === 'ENTREGADO'"
+                [class.cancelado]="seguimiento.cancelado">
+                {{ nombreEstado(seguimiento.estado) }}
+              </span>
+            </div>
+
+            @if (!seguimiento.cancelado) {
+              <div class="progreso-pedido">
+                <div class="progreso-etiquetas">
+                  <strong>Progreso del pedido</strong>
+                  <span>{{ seguimiento.porcentaje }}%</span>
+                </div>
+                <div class="barra-progreso" role="progressbar"
+                  [attr.aria-valuenow]="seguimiento.porcentaje"
+                  aria-valuemin="0" aria-valuemax="100"
+                  aria-label="Progreso del pedido">
+                  <div class="barra-avance" [style.width.%]="seguimiento.porcentaje"></div>
+                </div>
+              </div>
+            } @else {
+              <div class="aviso-cancelacion">Este pedido fue cancelado. El historial anterior se conserva para tu consulta.</div>
+            }
+
+            <ol class="linea-tiempo">
+              @for (etapa of seguimiento.etapas; track etapa.codigo; let ultima = $last) {
+                <li class="etapa" [class.completada]="etapa.completada"
+                  [class.actual]="etapa.actual" [class.pendiente]="etapa.pendiente">
+                  <div class="etapa-marcador" aria-hidden="true">
+                    @if (etapa.completada) { ✓ } @else { {{ $index + 1 }} }
+                  </div>
+                  <div class="etapa-contenido">
+                    <div class="etapa-encabezado">
+                      <strong>{{ etapa.titulo }}</strong>
+                      @if (etapa.actual) { <span class="etapa-actual">Estado actual</span> }
+                    </div>
+                    <p>{{ etapa.descripcion }}</p>
+                    <small>{{ etapa.fecha ? formatearFecha(etapa.fecha) : 'Pendiente' }}</small>
+                  </div>
+                </li>
+              }
+              @if (seguimiento.cancelado) {
+                <li class="etapa cancelacion-etapa">
+                  <div class="etapa-marcador" aria-hidden="true">×</div>
+                  <div class="etapa-contenido">
+                    <div class="etapa-encabezado"><strong>Pedido cancelado</strong><span class="etapa-actual">Estado final</span></div>
+                    <p>La solicitud de cancelación fue registrada.</p>
+                    <small>{{ formatearFecha(seguimiento.cancelacion) }}</small>
+                  </div>
+                </li>
+              }
+            </ol>
+            <button type="button" class="btn-secundario actualizar-seguimiento"
+              [disabled]="consultando()" (click)="consultarPedido()">
+              Actualizar seguimiento
+            </button>
+          </section>
+        } @else if (!consultando() && !errorConsulta()) {
+          <div class="estado-vacio">
+            Introduce un número de pedido para
+            consultar su trazabilidad.
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>

@@ -1,0 +1,115 @@
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #f5f7fb;
+  --app-surface: #ffffff;
+  --app-surface-alt: #f8fafc;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-border: #dbe3ee;
+  --app-primary: #ea580c;
+  --app-primary-hover: #c2410c;
+  --app-input-bg: #ffffff;
+  --app-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --app-bg: #0b1220;
+  --app-surface: #172235;
+  --app-surface-alt: #202e43;
+  --app-text: #f1f5f9;
+  --app-muted: #a8b6ca;
+  --app-border: #34445c;
+  --app-primary: #fb923c;
+  --app-primary-hover: #fdba74;
+  --app-input-bg: #111c2e;
+  --app-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input,
+select,
+textarea {
+  color: var(--app-text);
+}
+
+:focus-visible {
+  outline: 3px solid var(--app-primary);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgba(249, 115, 22, 0.3);
+}
+
+/*
+ * Compatibilidad inicial con componentes existentes.
+ * Los estilos específicos de cada módulo se adaptarán
+ * a las variables anteriores durante las siguientes etapas.
+ */
+
+:root[data-theme='dark'] {
+  .administrador-page,
+  .propietario-page,
+  .empleado-page,
+  .cliente-page {
+    background: var(--app-bg);
+    color: var(--app-text);
+  }
+
+  .topbar,
+  .panel,
+  .restaurante-card {
+    background: var(--app-surface);
+    color: var(--app-text);
+    border-color: var(--app-border);
+  }
+
+  input,
+  select,
+  textarea {
+    background: var(--app-input-bg);
+    color: var(--app-text);
+    border-color: var(--app-border);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--app-muted);
+  }
+}

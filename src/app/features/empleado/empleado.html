@@ -1,0 +1,451 @@
+
+<div class="empleado-page">
+  <header class="topbar">
+    <div class="marca">
+      <span class="marca-icono">P</span>
+      <div>
+        <strong>PLAZOLETA</strong>
+        <small>Operación de pedidos</small>
+      </div>
+    </div>
+
+    <div class="topbar-acciones">
+      <span class="etiqueta-rol">EMPLEADO</span>
+      <button
+        type="button"
+        class="btn-secundario"
+        (click)="cerrarSesion()"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <section class="bienvenida">
+      <span class="etiqueta">OPERACIÓN DEL RESTAURANTE</span>
+      <h1>Panel del empleado</h1>
+      <p>
+        Gestiona cada pedido desde su asignación hasta
+        la entrega al cliente.
+      </p>
+    </section>
+
+    <section class="flujo">
+      <div class="paso">
+        <span class="numero">01</span>
+        <div>
+          <strong>Asignación</strong>
+          <small>Pedidos pendientes</small>
+        </div>
+      </div>
+      <div class="paso">
+        <span class="numero">02</span>
+        <div>
+          <strong>Preparación</strong>
+          <small>Pedidos asignados</small>
+        </div>
+      </div>
+      <div class="paso">
+        <span class="numero">03</span>
+        <div>
+          <strong>Listo</strong>
+          <small>Esperando entrega</small>
+        </div>
+      </div>
+      <div class="paso">
+        <span class="numero">04</span>
+        <div>
+          <strong>Entrega</strong>
+          <small>Validación con PIN</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="titulo-seccion">
+        <div>
+          <span class="sobre-titulo">GESTIÓN OPERATIVA</span>
+          <h2>Pedidos del restaurante</h2>
+          <p>
+            Selecciona una etapa para consultar los pedidos
+            disponibles en ella.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="btn-secundario"
+          [disabled]="cargando() || procesandoId() !== null"
+          (click)="actualizar()"
+        >
+          {{ cargando() ? 'Actualizando...' : 'Actualizar pedidos' }}
+        </button>
+      </div>
+
+      <nav class="filtros" aria-label="Filtrar pedidos por estado">
+        @for (estado of estados; track estado.valor) {
+          <button
+            type="button"
+            class="filtro"
+            [class.activo]="estadoSeleccionado() === estado.valor"
+            [disabled]="procesandoId() !== null"
+            (click)="seleccionarEstado(estado.valor)"
+          >
+            {{ estado.etiqueta }}
+          </button>
+        }
+      </nav>
+
+      <div class="encabezado-listado">
+        <div>
+          <h3>{{ descripcionEstado() }}</h3>
+          <p>
+            Los resultados corresponden al estado seleccionado.
+          </p>
+        </div>
+
+        <span class="etiqueta-total">
+          {{ totalElementos() }} pedidos
+        </span>
+      </div>
+
+      <div class="herramientas">
+        <div class="campo-busqueda">
+          <label for="buscarPedido">Buscar en esta página</label>
+          <input
+            id="buscarPedido"
+            type="search"
+            placeholder="ID de pedido, cliente o restaurante"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event)"
+          />
+        </div>
+
+        <div class="indicador-pagina">
+          <span>Pedidos cargados</span>
+          <strong>{{ pedidos().length }}</strong>
+        </div>
+
+        <div class="indicador-pagina">
+          <span>Unidades de platos</span>
+          <strong>{{ cantidadPlatosPagina() }}</strong>
+        </div>
+      </div>
+
+      @if (errorListado()) {
+        <div class="alerta error" role="alert">
+          {{ errorListado() }}
+        </div>
+      }
+
+      @if (mensajeExito()) {
+        <div class="alerta exito" role="status">
+          {{ mensajeExito() }}
+        </div>
+      }
+
+      @if (errorOperacion() && !pedidoEntrega()) {
+        <div class="alerta error" role="alert">
+          {{ errorOperacion() }}
+        </div>
+      }
+
+      @if (operacionIndeterminada()) {
+        <div class="alerta advertencia" role="alert">
+          <strong>Resultado de operación no confirmado</strong>
+          <p>
+            No se pudo confirmar la
+            {{ descripcionOperacionIncierta() }}.
+            Revisa el estado del pedido antes de repetir
+            cualquier operación.
+          </p>
+          <button
+            type="button"
+            class="btn-secundario"
+            (click)="revisarOperacion()"
+          >
+            Ya revisé el resultado
+          </button>
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="estado-vacio">
+          <div class="estado-icono">...</div>
+          <h3>Cargando pedidos</h3>
+          <p>Consultando la información del restaurante.</p>
+        </div>
+      } @else if (!errorListado() && pedidosFiltrados().length === 0) {
+        <div class="estado-vacio">
+          <div class="estado-icono">0</div>
+          <h3>No hay pedidos para mostrar</h3>
+          <p>
+            No se encontraron resultados en el estado
+            o filtro seleccionado.
+          </p>
+        </div>
+      } @else if (!errorListado()) {
+        <div class="pedidos-grid">
+          @for (pedido of pedidosFiltrados(); track pedido.id) {
+            <article class="pedido-card">
+              <div class="pedido-cabecera">
+                <div>
+                  <small>NÚMERO DE PEDIDO</small>
+                  <h3>#{{ pedido.id }}</h3>
+                </div>
+
+                <span
+                  class="estado-badge"
+                  [class.pendiente]="pedido.estado === 'PENDIENTE'"
+                  [class.preparacion]="pedido.estado === 'EN_PREPARACION'"
+                  [class.listo]="pedido.estado === 'LISTO'"
+                  [class.entregado]="pedido.estado === 'ENTREGADO'"
+                  [class.cancelado]="pedido.estado === 'CANCELADO'"
+                >
+                  {{ estadoTexto(pedido.estado) }}
+                </span>
+              </div>
+
+              <div class="pedido-datos">
+                <div>
+                  <span>Cliente</span>
+                  <strong>#{{ pedido.clienteId }}</strong>
+                </div>
+
+                <div>
+                  <span>Restaurante</span>
+                  <strong>#{{ pedido.restauranteId }}</strong>
+                </div>
+
+                <div>
+                  <span>Empleado asignado</span>
+                  <strong>
+                    {{
+                      pedido.empleadoAsignado !== null
+                        ? '#' + pedido.empleadoAsignado
+                        : 'Sin asignar'
+                    }}
+                  </strong>
+                </div>
+              </div>
+
+              <div class="pedido-platos">
+                <h4>Detalle del pedido</h4>
+
+                @for (
+                  detalle of pedido.platos ?? [];
+                  track $index
+                ) {
+                  <div class="detalle-item">
+                    <span>Plato #{{ detalle.platoId }}</span>
+                    <strong>× {{ detalle.cantidad }}</strong>
+                  </div>
+                } @empty {
+                  <p class="sin-detalles">
+                    Este pedido no contiene detalles disponibles.
+                  </p>
+                }
+              </div>
+
+              <div class="pedido-acciones">
+                @if (pedido.estado === 'PENDIENTE') {
+                  <button
+                    type="button"
+                    class="btn-principal"
+                    [disabled]="procesandoId() !== null || cargando() || operacionIndeterminada()"
+                    (click)="asignarPedido(pedido)"
+                  >
+                    {{
+                      procesandoId() === pedido.id
+                        ? 'Asignando...'
+                        : 'Asignarme este pedido'
+                    }}
+                  </button>
+                }
+
+                @if (pedido.estado === 'EN_PREPARACION') {
+                  @if (puedeMarcarListo(pedido)) {
+                    <button
+                      type="button"
+                      class="btn-principal"
+                      [disabled]="procesandoId() !== null || cargando() || operacionIndeterminada()"
+                      (click)="marcarListo(pedido)"
+                    >
+                      {{
+                        procesandoId() === pedido.id
+                          ? 'Procesando...'
+                          : 'Marcar como listo'
+                      }}
+                    </button>
+                  } @else {
+                    <p class="estado-final informativo">
+                      Asignado a otro empleado o sin asignación verificable.
+                    </p>
+                  }
+                }
+
+                @if (pedido.estado === 'LISTO') {
+                  <button
+                    type="button"
+                    class="btn-principal"
+                    [disabled]="procesandoId() !== null || cargando() || operacionIndeterminada()"
+                    (click)="abrirEntrega(pedido)"
+                  >
+                    Entregar con PIN
+                  </button>
+                }
+
+                @if (pedido.estado === 'ENTREGADO') {
+                  <p class="estado-final entregado-texto">
+                    Pedido entregado correctamente
+                  </p>
+                }
+
+                @if (pedido.estado === 'CANCELADO') {
+                  <p class="estado-final cancelado-texto">
+                    Este pedido fue cancelado
+                  </p>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
+
+      @if (totalPaginas() > 1 && !cargando()) {
+        <div class="paginacion">
+          <button
+            type="button"
+            [disabled]="paginaActual() === 0 || procesandoId() !== null"
+            (click)="cargarPedidos(paginaActual() - 1)"
+          >
+            Anterior
+          </button>
+
+          <span>
+            Página {{ paginaActual() + 1 }}
+            de {{ totalPaginas() }}
+          </span>
+
+          <button
+            type="button"
+            [disabled]="paginaActual() + 1 >= totalPaginas() || procesandoId() !== null"
+            (click)="cargarPedidos(paginaActual() + 1)"
+          >
+            Siguiente
+          </button>
+        </div>
+      }
+    </section>
+  </main>
+
+  @if (pedidoEntrega(); as pedido) {
+    <div class="modal-fondo">
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tituloEntrega"
+      >
+        <div class="modal-cabecera">
+          <div>
+            <span class="sobre-titulo">VALIDACIÓN DE SEGURIDAD</span>
+            <h2 id="tituloEntrega">
+              Entregar pedido #{{ pedido.id }}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="btn-cerrar"
+            aria-label="Cerrar"
+            [disabled]="procesandoId() !== null"
+            (click)="cerrarEntrega()"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="informacion-entrega">
+          <div>
+            <span>Pedido</span>
+            <strong>#{{ pedido.id }}</strong>
+          </div>
+          <div>
+            <span>Cliente</span>
+            <strong>#{{ pedido.clienteId }}</strong>
+          </div>
+          <div>
+            <span>Estado</span>
+            <strong>{{ estadoTexto(pedido.estado) }}</strong>
+          </div>
+        </div>
+
+        <p class="modal-descripcion">
+          Solicita al cliente el PIN de seis dígitos
+          correspondiente a este pedido. La entrega
+          solo se confirmará cuando el backend valide el PIN.
+        </p>
+
+        <form (ngSubmit)="entregarPedido()" novalidate>
+          <div class="campo">
+            <label for="pin">
+              PIN de seguridad <span class="required">*</span>
+            </label>
+
+            <input
+              id="pin"
+              name="pin"
+              type="text"
+              inputmode="numeric"
+              maxlength="6"
+              autocomplete="off"
+              placeholder="000000"
+              [ngModel]="pin()"
+              (ngModelChange)="cambiarPin($event)"
+              (blur)="pinTocado.set(true)"
+              [disabled]="procesandoId() !== null"
+              [class.input-error]="pinTocado() && !!errorPin()"
+            />
+
+            @if (pinTocado() && errorPin()) {
+              <small class="field-error">
+                {{ errorPin() }}
+              </small>
+            }
+          </div>
+
+          @if (errorOperacion()) {
+            <div class="alerta error" role="alert">
+              {{ errorOperacion() }}
+            </div>
+          }
+
+          <div class="modal-acciones">
+            <button
+              type="button"
+              class="btn-secundario"
+              [disabled]="procesandoId() !== null"
+              (click)="cerrarEntrega()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="btn-principal"
+              [disabled]="!!errorPin() || procesandoId() !== null || operacionIndeterminada()"
+            >
+              {{
+                procesandoId() === pedido.id
+                  ? 'Validando PIN...'
+                  : 'Confirmar entrega'
+              }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+</div>
