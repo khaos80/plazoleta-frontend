@@ -657,25 +657,28 @@ Cada microservicio debe ejecutarse en una terminal independiente.
 Desde su carpeta raíz:
 
 ```powershell
-java -Xms64m -Xmx256m -jar .\target\NOMBRE_JAR_USER.jar
+# user-service
+java -Xms64m -Xmx256m -jar .\target\user-service-0.0.1-SNAPSHOT.jar
 ```
 
 ### 14.2. Iniciar restaurant-service
 
 ```powershell
-java -Xms64m -Xmx256m -jar .\target\NOMBRE_JAR_RESTAURANT.jar
+# restaurant-service
+java -Xms64m -Xmx256m -jar .\target\restaurant-service-0.0.1-SNAPSHOT.jar
 ```
 
 ### 14.3. Iniciar dish-service
 
 ```powershell
-java -Xms64m -Xmx256m -jar .\target\NOMBRE_JAR_DISH.jar
+java -Xms64m -Xmx256m -jar .\target\dish-service-0.0.1-SNAPSHOT.jar
 ```
 
 ### 14.4. Iniciar order-service
 
 ```powershell
-java -Xms64m -Xmx256m -jar .\target\NOMBRE_JAR_ORDER.jar
+# order-service
+java -Xms64m -Xmx256m -jar .\target\order-service-0.0.1-SNAPSHOT.jar
 ```
 
 Reemplazar cada nombre por el archivo JAR real generado en la carpeta `target`.
