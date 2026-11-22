@@ -8,14 +8,16 @@ import {
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AuthService } from '../../core/auth/auth';
 
 import {
   AdministracionService,
-  CrearPropietarioRequest
+  CrearPropietarioRequest,
+  CrearPropietarioResponse,
+  PropietarioResumen
 } from '../../core/services/administracion';
 
 import {
@@ -66,10 +68,19 @@ export class Administrador implements OnInit {
 
   readonly seccion = signal<Seccion>('propietarios');
 
+  readonly propietariosDisponibles = signal<PropietarioResumen[]>([]);
+  readonly cargandoPropietarios = signal(false);
+  readonly errorPropietarios = signal('');
+  private solicitudPropietarios = 0;
+
   readonly guardando = signal(false);
   readonly error = signal('');
   readonly exito = signal('');
   readonly resultadoIndeterminado = signal(false);
+
+  // Resultado real confirmado por user-service.
+  readonly propietarioCreado =
+    signal<CrearPropietarioResponse | null>(null);
 
   readonly propietario = signal<FormularioPropietario>(
     this.nuevoPropietario()
@@ -93,6 +104,7 @@ export class Administrador implements OnInit {
     signal<Record<number, boolean>>({});
 
   readonly restaurantes = signal<RestauranteResumen[]>([]);
+  readonly propietariosListado = signal<PropietarioResumen[]>([]);
 
   readonly cargandoListado = signal(false);
   readonly errorListado = signal('');
@@ -100,6 +112,13 @@ export class Administrador implements OnInit {
   readonly pagina = signal(0);
   readonly totalPaginas = signal(0);
   readonly totalElementos = signal(0);
+
+  nombrePropietario(id: number): string {
+    const propietario = this.propietariosListado().find(p => p.id === id);
+    return propietario
+      ? `${propietario.nombre} ${propietario.apellido}`
+      : `Propietario #${id}`;
+  }
 
   readonly restaurantesFiltrados = computed(() => {
     const termino = this.busqueda()
@@ -112,7 +131,9 @@ export class Administrador implements OnInit {
 
     return this.restaurantes().filter(item =>
       item.nombre.toLocaleLowerCase('es').includes(termino) ||
-      String(item.id).includes(termino)
+      String(item.id).includes(termino) ||
+      item.nit.includes(termino) ||
+      this.nombrePropietario(item.propietarioId).toLocaleLowerCase('es').includes(termino)
     );
   });
 
@@ -208,10 +229,10 @@ export class Administrador implements OnInit {
       },
       {
         campo: 'propietarioId',
-        etiqueta: 'ID del propietario',
-        tipo: 'text',
-        placeholder: 'Ej. 10',
-        ayuda: 'Ingresa el ID real de un usuario con rol PROPIETARIO.'
+        etiqueta: 'Propietario disponible',
+        tipo: 'select',
+        placeholder: 'Selecciona un propietario',
+        ayuda: 'Solo aparecen propietarios sin restaurante asignado.'
       }
     ];
 
@@ -219,6 +240,7 @@ export class Administrador implements OnInit {
 
   ngOnInit(): void {
     this.cargarRestaurantes();
+    this.cargarPropietariosDisponibles();
   }
 
   private nuevoPropietario(): FormularioPropietario {
@@ -246,18 +268,65 @@ export class Administrador implements OnInit {
   }
 
   seleccionarSeccion(valor: Seccion): void {
-    if (this.guardando()) return;
+    if (this.guardando()) {
+      return;
+    }
 
     this.seccion.set(valor);
     this.error.set('');
     this.exito.set('');
 
     // No se elimina automáticamente el estado incierto.
-    // Solo el usuario puede desbloquearlo tras verificar
-    // si el registro realmente se creó.
+    // Solo se desbloquea después de verificar la operación.
+    if (valor === 'restaurantes') {
+      this.cargarPropietariosDisponibles();
+    }
+
     if (valor === 'listado') {
       this.cargarRestaurantes(this.pagina());
     }
+  }
+
+  cargarPropietariosDisponibles(): void {
+    const solicitud = ++this.solicitudPropietarios;
+    this.cargandoPropietarios.set(true);
+    this.errorPropietarios.set('');
+
+    forkJoin({
+      propietarios: this.administracionApi.listarPropietarios(),
+      asignados: this.restaurantesApi.listarPropietariosAsignados()
+    }).pipe(
+      finalize(() => {
+        if (solicitud === this.solicitudPropietarios) {
+          this.cargandoPropietarios.set(false);
+        }
+      })
+    ).subscribe({
+      next: ({ propietarios, asignados }) => {
+        if (solicitud !== this.solicitudPropietarios) return;
+
+        const ocupados = new Set(asignados);
+        const disponibles = propietarios.filter(
+          propietario => !ocupados.has(propietario.id)
+        );
+        this.propietariosDisponibles.set(disponibles);
+
+        const seleccionado = Number(this.restaurante().propietarioId);
+        if (!disponibles.some(p => p.id === seleccionado)) {
+          const creado = this.propietarioCreado();
+          const preferido = creado && disponibles.find(p => p.id === creado.id);
+          this.restaurante.update(actual => ({
+            ...actual,
+            propietarioId: preferido ? String(preferido.id) : ''
+          }));
+        }
+      },
+      error: error => {
+        if (solicitud !== this.solicitudPropietarios) return;
+        this.propietariosDisponibles.set([]);
+        this.errorPropietarios.set(obtenerMensajeHttp(error));
+      }
+    });
   }
 
   cambiarPropietario(
@@ -272,6 +341,10 @@ export class Administrador implements OnInit {
     this.tocarPropietario(campo);
     this.error.set('');
     this.exito.set('');
+
+    // Una nueva edición inicia otro intento de registro.
+    // No se reutiliza la confirmación anterior.
+    this.propietarioCreado.set(null);
   }
 
   tocarPropietario(campo: CampoPropietario): void {
@@ -331,7 +404,8 @@ export class Administrador implements OnInit {
   }
 
   imagenDisponible(item: RestauranteResumen): boolean {
-    return !!item.urlLogo && !this.imagenesFallidas()[item.id];
+    return !!item.urlLogo &&
+      !this.imagenesFallidas()[item.id];
   }
 
   private validarUrl(valor: string): boolean {
@@ -353,7 +427,6 @@ export class Administrador implements OnInit {
     }
 
     const partes = fecha.split('-').map(Number);
-
     const [anio, mes, dia] = partes;
 
     const nacimiento = new Date(anio, mes - 1, dia);
@@ -442,12 +515,9 @@ export class Administrador implements OnInit {
 
     switch (campo) {
       case 'propietarioId':
-        return (
-          /^[1-9]\d*$/.test(valor) &&
-          Number.isSafeInteger(Number(valor))
-        )
-          ? ''
-          : 'Ingresa un ID entero positivo válido.';
+        return this.propietariosDisponibles().some(
+          propietario => String(propietario.id) === valor
+        ) ? '' : 'Selecciona un propietario disponible.';
 
       case 'urlLogo':
         return this.validarUrl(valor)
@@ -503,6 +573,7 @@ export class Administrador implements OnInit {
     this.guardando.set(true);
     this.error.set('');
     this.exito.set('');
+    this.propietarioCreado.set(null);
 
     this.administracionApi
       .crearPropietario(solicitud)
@@ -511,20 +582,86 @@ export class Administrador implements OnInit {
       )
       .subscribe({
         next: respuesta => {
-          this.exito.set(
-            respuesta.mensaje ||
-            'El propietario se registró correctamente.'
-          );
+
+          // Confirmar que el backend devolvió un ID válido.
+          if (
+            !Number.isSafeInteger(respuesta.id) ||
+            respuesta.id <= 0
+          ) {
+            this.resultadoIndeterminado.set(true);
+
+            this.error.set(
+              'El servidor respondió, pero no devolvió ' +
+              'un ID de propietario válido. Verifica ' +
+              'si el usuario fue registrado antes de ' +
+              'intentar nuevamente.'
+            );
+
+            return;
+          }
+
+          this.propietarioCreado.set(respuesta);
+          this.propietariosDisponibles.update(actual => {
+            if (actual.some(item => item.id === respuesta.id)) return actual;
+            return [...actual, {
+              id: respuesta.id, nombre: respuesta.nombre,
+              apellido: respuesta.apellido, correo: respuesta.correo
+            }];
+          });
 
           this.propietario.set(this.nuevoPropietario());
           this.tocadosPropietario.set({});
           this.mostrarContrasenas.set(false);
+
+          // El ID queda listo para crear su restaurante.
+          this.restaurante.update(actual => ({
+            ...actual,
+            propietarioId: String(respuesta.id)
+          }));
+
+          this.tocadosRestaurante.update(actual => {
+            const copia = { ...actual };
+            delete copia['propietarioId'];
+            return copia;
+          });
         },
 
         error: error => {
           this.manejarErrorRegistro(error);
         }
       });
+  }
+
+  // Navega a la creación del restaurante y conserva
+  // los demás datos que el administrador haya ingresado.
+  crearRestauranteParaPropietario(): void {
+    const creado = this.propietarioCreado();
+
+    if (!creado || this.guardando()) {
+      return;
+    }
+
+    this.restaurante.update(actual => ({
+      ...actual,
+      propietarioId: String(creado.id)
+    }));
+
+    this.seleccionarSeccion('restaurantes');
+  }
+
+  // Permite comenzar un nuevo registro sin conservar
+  // el resultado anterior en pantalla.
+  nuevoRegistroPropietario(): void {
+    if (this.guardando()) {
+      return;
+    }
+
+    this.propietarioCreado.set(null);
+    this.propietario.set(this.nuevoPropietario());
+    this.tocadosPropietario.set({});
+    this.mostrarContrasenas.set(false);
+    this.error.set('');
+    this.exito.set('');
   }
 
   crearRestaurante(): void {
@@ -539,7 +676,9 @@ export class Administrador implements OnInit {
     if (
       !this.restauranteValido() ||
       this.guardando() ||
-      this.resultadoIndeterminado()
+      this.resultadoIndeterminado() ||
+      this.cargandoPropietarios() ||
+      !!this.errorPropietarios()
     ) {
       return;
     }
@@ -574,11 +713,16 @@ export class Administrador implements OnInit {
           this.restaurante.set(this.nuevoRestaurante());
           this.tocadosRestaurante.set({});
 
+          this.propietarioCreado.set(null);
+          this.cargarPropietariosDisponibles();
           this.cargarRestaurantes(0);
         },
 
         error: error => {
           this.manejarErrorRegistro(error);
+          if (error instanceof HttpErrorResponse && error.status === 409) {
+            this.cargarPropietariosDisponibles();
+          }
         }
       });
   }
@@ -614,7 +758,9 @@ export class Administrador implements OnInit {
   }
 
   confirmarRevisionResultado(): void {
-    if (this.guardando()) return;
+    if (this.guardando()) {
+      return;
+    }
 
     this.resultadoIndeterminado.set(false);
     this.error.set('');
@@ -631,13 +777,17 @@ export class Administrador implements OnInit {
     this.cargandoListado.set(true);
     this.errorListado.set('');
 
-    this.restaurantesApi.listar(pagina, 10).subscribe({
-      next: respuesta => {
+    forkJoin({
+      respuesta: this.restaurantesApi.listar(pagina, 10),
+      propietarios: this.administracionApi.listarPropietarios()
+    }).subscribe({
+      next: ({ respuesta, propietarios }) => {
         if (solicitud !== this.solicitudListado) {
           return;
         }
 
         this.restaurantes.set(respuesta.contenido ?? []);
+        this.propietariosListado.set(propietarios);
         this.pagina.set(respuesta.paginaActual ?? pagina);
         this.totalPaginas.set(respuesta.totalPaginas ?? 0);
         this.totalElementos.set(respuesta.totalElementos ?? 0);

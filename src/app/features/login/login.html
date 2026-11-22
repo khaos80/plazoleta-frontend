@@ -1,58 +1,68 @@
 
 <div class="login-page">
-  <section class="login-card">
 
-    <div class="brand">
-      <div class="brand-icon">P</div>
-      <span>PLAZOLETA</span>
-    </div>
+  <main class="login-card">
 
-    <div class="heading">
-      <span class="eyebrow">BIENVENIDO</span>
-      <h1>Iniciar sesión</h1>
+    <!-- Encabezado -->
+    <header class="login-header">
+      <h1>Plaza de Comidas</h1>
+      <p>Sistema de gestión</p>
+    </header>
 
-      <p>
-        Accede a tu cuenta para gestionar tus pedidos
-        y disfrutar de nuestros servicios.
-      </p>
-    </div>
+    <!-- Bienvenida -->
+    <section class="login-heading">
+      <h2>Iniciar sesión</h2>
+      <p>Ingresa tus credenciales para continuar.</p>
+    </section>
 
+    <!-- Registro exitoso -->
     @if (registroExitoso) {
       <div class="registro-exitoso" role="status">
-        Cuenta creada correctamente.
-        Ya puedes iniciar sesión.
+        <span>Cuenta creada correctamente.</span>
+        <span>Ya puedes iniciar sesión.</span>
       </div>
     }
 
+    <!-- Formulario -->
     <form
       (ngSubmit)="iniciarSesion()"
       #loginForm="ngForm"
       novalidate
     >
 
-      <!-- Correo -->
-      <div class="field">
+      <!-- Correo electrónico -->
+      <div class="form-field">
+
         <label for="correo">
           Correo electrónico
-          <span class="required">*</span>
         </label>
 
-        <input
-          id="correo"
-          name="correo"
-          type="email"
-          [(ngModel)]="correo"
-          #correoControl="ngModel"
-          placeholder="correo@ejemplo.com"
-          autocomplete="username"
-          required
-          email
-          [class.input-error]="correoControl.invalid && (correoControl.dirty || correoControl.touched)"
-          [class.input-success]="correoControl.valid && correoControl.dirty"
-          [attr.aria-invalid]="correoControl.invalid && (correoControl.dirty || correoControl.touched)"
-        />
+        <div class="input-container">
+          <input
+            id="correo"
+            name="correo"
+            type="email"
+            [(ngModel)]="correo"
+            #correoControl="ngModel"
+            placeholder="correo@ejemplo.com"
+            autocomplete="username"
+            required
+            email
+            [class.input-error]="
+              correoControl.invalid &&
+              (correoControl.dirty || correoControl.touched)
+            "
+            [attr.aria-invalid]="
+              correoControl.invalid &&
+              (correoControl.dirty || correoControl.touched)
+            "
+          />
+        </div>
 
-        @if (correoControl.invalid && (correoControl.dirty || correoControl.touched)) {
+        @if (
+          correoControl.invalid &&
+          (correoControl.dirty || correoControl.touched)
+        ) {
           <small class="field-error">
             @if (correoControl.errors?.['required']) {
               El correo electrónico es obligatorio.
@@ -61,59 +71,147 @@
             }
           </small>
         }
+
       </div>
 
       <!-- Contraseña -->
-      <div class="field">
+      <div class="form-field">
+
         <label for="contrasena">
           Contraseña
-          <span class="required">*</span>
         </label>
 
-        <input
-          id="contrasena"
-          name="contrasena"
-          type="password"
-          [(ngModel)]="contrasena"
-          #contrasenaControl="ngModel"
-          placeholder="Ingresa tu contraseña"
-          autocomplete="current-password"
-          required
-          [class.input-error]="contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)"
-          [class.input-success]="contrasenaControl.valid && contrasenaControl.dirty"
-          [attr.aria-invalid]="contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)"
-        />
+        <div class="input-container password-container">
 
-        @if (contrasenaControl.invalid && (contrasenaControl.dirty || contrasenaControl.touched)) {
+          <input
+            id="contrasena"
+            name="contrasena"
+            [type]="
+              mostrarContrasena() ? 'text' : 'password'
+            "
+            [(ngModel)]="contrasena"
+            #contrasenaControl="ngModel"
+            placeholder="Ingresa tu contraseña"
+            autocomplete="current-password"
+            required
+            [class.input-error]="
+              contrasenaControl.invalid &&
+              (contrasenaControl.dirty ||
+               contrasenaControl.touched)
+            "
+            [attr.aria-invalid]="
+              contrasenaControl.invalid &&
+              (contrasenaControl.dirty ||
+               contrasenaControl.touched)
+            "
+          />
+
+          <button
+            class="password-toggle"
+            type="button"
+            (click)="alternarVisibilidadContrasena()"
+            [attr.aria-label]="
+              mostrarContrasena()
+                ? 'Ocultar contraseña'
+                : 'Mostrar contraseña'
+            "
+            [attr.aria-pressed]="mostrarContrasena()"
+          >
+
+            @if (mostrarContrasena()) {
+              <!-- Ojo abierto -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
+                />
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            } @else {
+              <!-- Ojo cerrado -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 3l18 18"/>
+                <path
+                  d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a15 15 0 0 1-3.1 3.8"
+                />
+                <path
+                  d="M6.4 6.4C3.5 8.4 2 12 2 12s3.5 7 10 7a10.5 10.5 0 0 0 4.1-.8"
+                />
+                <path d="M10 10a3 3 0 0 0 4 4"/>
+              </svg>
+            }
+
+          </button>
+        </div>
+
+        @if (
+          contrasenaControl.invalid &&
+          (contrasenaControl.dirty ||
+           contrasenaControl.touched)
+        ) {
           <small class="field-error">
             La contraseña es obligatoria.
           </small>
         }
+
       </div>
 
+      <!-- Errores del servidor -->
       @if (error()) {
         <div class="error-message" role="alert">
           {{ error() }}
         </div>
       }
 
+      <!-- Iniciar sesión -->
       <button
+        class="login-button"
         type="submit"
         [disabled]="cargando() || loginForm.invalid"
       >
-        {{ cargando() ? 'Iniciando sesión...' : 'Ingresar' }}
+
+        @if (cargando()) {
+          <span
+            class="loading-spinner"
+            aria-hidden="true"
+          ></span>
+          <span>Iniciando sesión...</span>
+        } @else {
+          <span>Ingresar</span>
+        }
+
       </button>
 
     </form>
 
-    <p class="registro-link">
-      ¿No tienes una cuenta?
-      <a routerLink="/registro">Regístrate aquí</a>
-    </p>
+    <!-- Registro -->
+    <div class="register-section">
+      <span>¿No tienes una cuenta?</span>
+      <a routerLink="/registro">Crear cuenta</a>
+    </div>
 
-    <p class="footer-text">
-      Plataforma de gestión de restaurantes y pedidos
-    </p>
+    <!-- Pie de página -->
+    <footer class="login-footer">
+      <span>Plaza de Comidas</span>
+      <span class="footer-separator">·</span>
+      <span>Acceso seguro</span>
+    </footer>
 
-  </section>
+  </main>
+
 </div>

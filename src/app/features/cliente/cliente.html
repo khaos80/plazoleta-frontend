@@ -1,53 +1,39 @@
-
-<div class="cliente-page">
-  <header class="topbar">
-    <div class="marca">
-      <span class="marca-icono">P</span>
-      <div>
-        <strong>PLAZOLETA</strong>
-        <small>Experiencia del cliente</small>
-      </div>
+<div class="cliente-page cliente-con-sidebar">
+  <div class="cliente-overlay" [class.visible]="sidebarAbierto()" (click)="cerrarSidebar()" aria-hidden="true"></div>
+  <aside class="cliente-sidebar" [class.abierto]="sidebarAbierto()" aria-label="Navegación del cliente">
+    <div class="sidebar-identidad">
+      <span class="sidebar-marca">P</span>
+      <div><strong>Plaza de Comidas</strong><small>Experiencia del cliente</small></div>
+      <button type="button" class="sidebar-cerrar" (click)="cerrarSidebar()" aria-label="Cerrar menú">×</button>
     </div>
-
-    <div class="topbar-acciones">
-      <span class="etiqueta-rol">CLIENTE</span>
-      <button
-        type="button"
-        class="btn-secundario"
-        (click)="cerrarSesion()"
-      >
-        Cerrar sesión
+    <div class="sidebar-titulo">EXPLORAR Y ORDENAR</div>
+    <nav class="sidebar-navegacion" aria-label="Secciones del cliente">
+      <button type="button" [class.activo]="seccion() === 'catalogo'" (click)="seleccionarSeccion('catalogo')">
+        <span class="sidebar-numero">01</span><span class="sidebar-texto">Restaurantes y menú<small>Explorar platos</small></span>
       </button>
-    </div>
-  </header>
-
-  <main class="contenido">
-    <section class="bienvenida">
-      <span class="etiqueta">EXPLORA Y ORDENA</span>
-      <h1>¿Qué deseas comer hoy?</h1>
-      <p>
-        Descubre restaurantes, elige tus platos favoritos
-        y sigue el estado de tus pedidos.
-      </p>
-    </section>
-
-    <nav class="pestanas" aria-label="Secciones del cliente">
-      <button
-        type="button"
-        [class.activa]="seccion() === 'catalogo'"
-        (click)="seleccionarSeccion('catalogo')"
-      >
-        01 · Restaurantes y pedidos
-      </button>
-
-      <button
-        type="button"
-        [class.activa]="seccion() === 'seguimiento'"
-        (click)="seleccionarSeccion('seguimiento')"
-      >
-        02 · Seguimiento de pedidos
+      <button type="button" [class.activo]="seccion() === 'seguimiento'" (click)="seleccionarSeccion('seguimiento')">
+        <span class="sidebar-numero">02</span><span class="sidebar-texto">Mi pedido activo<small>Seguimiento automático</small></span>
       </button>
     </nav>
+    <div class="sidebar-pie">
+      <div class="sidebar-perfil"><span class="sidebar-avatar">C</span><div><strong>Cliente</strong><small>Acceso a la plazoleta</small></div></div>
+      <button type="button" class="sidebar-salir" (click)="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </aside>
+  <div class="cliente-principal">
+    <div class="cliente-barra-movil">
+      <button type="button" class="sidebar-abrir" (click)="alternarSidebar()" [attr.aria-expanded]="sidebarAbierto()" aria-label="Abrir menú">☰ Menú</button>
+      <span>Plaza de Comidas</span>
+    </div>
+
+  <main class="contenido">
+    @if (seccion() === 'catalogo' && !pedidoActivo()) {
+      <section class="bienvenida">
+        <span class="etiqueta">EXPLORA Y ORDENA</span>
+        <h1>¿Qué deseas comer hoy?</h1>
+        <p>Descubre restaurantes, elige tus platos favoritos y sigue el estado de tus pedidos.</p>
+      </section>
+    }
 
     @if (seccion() === 'catalogo') {
       <div class="layout">
@@ -289,7 +275,7 @@
                               min="1"
                               max="99"
                               step="1"
-                              [ngModel]="cantidades()[plato.id] ?? '1'"
+                              [ngModel]="cantidades()[plato.id]"
                               (ngModelChange)="cambiarCantidad(plato.id, $event)"
                               [class.input-error]="cantidadesTocadas()[plato.id] && !!errorCantidad(plato.id)"
                             />
@@ -477,7 +463,7 @@
           <button
             type="button"
             class="btn-principal confirmar-btn"
-            [disabled]="!carritoValido() || enviando() || envioIndeterminado()"
+            [disabled]="!carritoValido() || enviando() || envioIndeterminado() || !!pedidoActivo() || cargandoPedidoActivo()"
             (click)="crearPedido()"
           >
             {{
@@ -519,197 +505,123 @@
       </div>
     }
 
-    <!-- SEGUIMIENTO -->
-
+    <!-- SEGUIMIENTO AUTOMÁTICO DEL PEDIDO ACTIVO -->
     @if (seccion() === 'seguimiento') {
-      <section class="panel seguimiento-panel">
-        <div class="titulo-seccion">
+      <section class="seguimiento-nuevo" aria-label="Mi pedido activo">
+        <div class="seguimiento-hero">
           <div>
-            <span class="sobre-titulo">
-              PASO 04 · SEGUIMIENTO
-            </span>
-            <h2>Consulta tu pedido</h2>
-            <p>
-              Revisa la trazabilidad de un pedido
-              o solicita su cancelación.
-            </p>
+            <span class="sobre-titulo">TU PEDIDO · SEGUIMIENTO</span>
+            <h1>{{ pedidoActivo() ? 'Tu pedido está ' + nombreEstado(pedidoActivo()!.estado).toLowerCase() : 'Seguimiento de tu pedido' }}</h1>
+            <p>Consulta el avance y los detalles de tu compra en un solo lugar.</p>
+          </div>
+          <div class="estado-conexion" [class.consultando-estado]="sincronizando()">
+            <span class="conexion-punto"></span>
+            {{ sincronizando() ? 'Sincronizando...' : 'Actualización automática cada 5 s' }}
           </div>
         </div>
 
-        @if (ultimoPedido(); as pedido) {
-          <div class="ultimo-pedido">
-            <div>
-              <span>Último pedido de esta sesión</span>
-              <strong>#{{ pedido.pedidoId }}</strong>
-              <small>{{ pedido.estado }}</small>
-            </div>
-
-            <button
-              type="button"
-              class="btn-secundario"
-              [disabled]="consultando() || cancelando()"
-              (click)="consultarUltimoPedido()"
-            >
-              Consultar este pedido
-            </button>
-          </div>
+        @if (errorPedidoActivo()) {
+          <div class="alerta error" role="alert">{{ errorPedidoActivo() }}</div>
         }
-
-        <div class="campo">
-          <label for="pedidoId">
-            Número de pedido
-            <span class="required">*</span>
-          </label>
-
-          <input
-            id="pedidoId"
-            name="pedidoId"
-            type="text"
-            inputmode="numeric"
-            placeholder="Ej. 15"
-            [ngModel]="pedidoIdConsulta()"
-            (ngModelChange)="cambiarIdConsulta($event)"
-            (blur)="consultaTocada.set(true)"
-            [class.input-error]="consultaTocada() && !!errorIdPedido()"
-          />
-
-          @if (consultaTocada() && errorIdPedido()) {
-            <small class="field-error">
-              {{ errorIdPedido() }}
-            </small>
-          }
-        </div>
-
-        <div class="acciones-consulta">
-          <button
-            type="button"
-            class="btn-principal"
-            [disabled]="!!errorIdPedido() || consultando() || cancelando()"
-            (click)="consultarPedido()"
-          >
-            {{
-              consultando()
-                ? 'Consultando...'
-                : 'Consultar trazabilidad'
-            }}
-          </button>
-
-          <button
-            type="button"
-            class="btn-peligro"
-            [disabled]="!!errorIdPedido() || consultando() || cancelando() || cancelacionIndeterminada()"
-            (click)="cancelarPedido()"
-          >
-            {{
-              cancelando()
-                ? 'Cancelando...'
-                : 'Cancelar pedido'
-            }}
-          </button>
-        </div>
-
-        @if (errorConsulta()) {
-          <div class="alerta error" role="alert">
-            {{ errorConsulta() }}
-          </div>
-        }
-
-        @if (exitoConsulta()) {
-          <div class="alerta exito" role="status">
-            {{ exitoConsulta() }}
-          </div>
-        }
-
-        @if (cancelacionIndeterminada()) {
-          <div class="alerta advertencia" role="alert">
-            <strong>Cancelación no confirmada</strong>
-            <p>
-              Consulta el estado actual antes de volver
-              a solicitar la cancelación.
-            </p>
-
-            <button
-              type="button"
-              class="btn-secundario"
-              (click)="revisarCancelacion()"
-            >
-              Consultar estado actual
-            </button>
-          </div>
-        }
-
-        @if (seguimiento(); as seguimiento) {
-          <section class="resultado-trazabilidad" aria-label="Seguimiento del pedido">
-            <div class="resultado-cabecera">
+        @if (cargandoPedidoActivo() && !pedidoActivo()) {
+          <div class="panel estado-vacio">Consultando tu pedido activo...</div>
+        } @else if (pedidoActivo(); as pedido) {
+          <div class="seguimiento-tarjeta">
+            <div class="pedido-cabecera-nueva">
               <div>
-                <span class="sobre-titulo">SEGUIMIENTO DEL PEDIDO</span>
-                <h3>Pedido #{{ seguimiento.pedidoId }}</h3>
-                <p>Consulta el avance de tu pedido en cada etapa.</p>
+                <span class="sobre-titulo">PEDIDO #{{ pedido.id }}</span>
+                <h2>{{ nombreRestauranteActivo() }}</h2>
+                <p>Este es el resumen de tu solicitud y su avance actual.</p>
               </div>
-              <span class="estado-seguimiento"
-                [class.entregado]="seguimiento.estado === 'ENTREGADO'"
-                [class.cancelado]="seguimiento.cancelado">
-                {{ nombreEstado(seguimiento.estado) }}
-              </span>
+              <span class="estado-seguimiento" [class.entregado]="pedido.estado === 'ENTREGADO'">{{ nombreEstado(pedido.estado) }}</span>
             </div>
 
-            @if (!seguimiento.cancelado) {
-              <div class="progreso-pedido">
-                <div class="progreso-etiquetas">
-                  <strong>Progreso del pedido</strong>
-                  <span>{{ seguimiento.porcentaje }}%</span>
+            <div class="resumen-compra">
+              <div class="resumen-titulo">
+                <h3>Lo que pediste</h3>
+                <span>Pedido #{{ pedido.id }}</span>
+              </div>
+              @if (detallePedido().length) {
+                <div class="lista-platos-pedido">
+                  @for (item of detallePedido(); track $index) {
+                    <div class="plato-pedido-fila">
+                      <span class="plato-cantidad">{{ item.cantidad }}×</span>
+                      <div class="plato-pedido-nombre"><strong>{{ item.nombre }}</strong><small>Plato #{{ item.id }}</small></div>
+                      @if (item.precio !== null) {
+                        <strong>{{ item.cantidad * item.precio | currency:'COP':'symbol':'1.0-0' }}</strong>
+                      }
+                    </div>
+                  }
                 </div>
-                <div class="barra-progreso" role="progressbar"
-                  [attr.aria-valuenow]="seguimiento.porcentaje"
-                  aria-valuemin="0" aria-valuemax="100"
-                  aria-label="Progreso del pedido">
+                @if (totalDetalle() !== null) {
+                  <div class="total-pedido"><span>Total del pedido</span><strong>{{ totalDetalle() | currency:'COP':'symbol':'1.0-0' }}</strong></div>
+                }
+              } @else {
+                <p class="detalle-no-disponible">El servicio de pedidos todavía no devuelve el detalle de los platos en esta consulta. El seguimiento del estado continúa funcionando.</p>
+              }
+            </div>
+
+            @if (errorConsulta()) { <div class="alerta error" role="alert">{{ errorConsulta() }}</div> }
+            @if (exitoConsulta()) { <div class="alerta exito" role="status">{{ exitoConsulta() }}</div> }
+            @if (cancelacionIndeterminada()) {
+              <div class="alerta advertencia" role="alert">
+                No se pudo confirmar la cancelación. Comprueba el estado antes de intentarlo nuevamente.
+                <button type="button" class="btn-secundario" (click)="revisarCancelacion()">Verificar estado</button>
+              </div>
+            }
+            @if (seguimiento(); as seguimiento) {
+              <div class="progreso-contenedor">
+                <div class="resumen-titulo"><h3>Avance de tu pedido</h3><strong>{{ seguimiento.porcentaje }}%</strong></div>
+                <div class="barra-progreso" role="progressbar" [attr.aria-valuenow]="seguimiento.porcentaje" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso del pedido">
                   <div class="barra-avance" [style.width.%]="seguimiento.porcentaje"></div>
                 </div>
+                <ol class="linea-tiempo">
+                  @for (etapa of seguimiento.etapas; track etapa.codigo) {
+                    <li class="etapa" [class.completada]="etapa.completada" [class.actual]="etapa.actual" [class.pendiente]="etapa.pendiente">
+                      <div class="etapa-marcador" aria-hidden="true">{{ etapa.completada ? '✓' : $index + 1 }}</div>
+                      <div class="etapa-contenido">
+                        <div class="etapa-encabezado"><strong>{{ etapa.titulo }}</strong>@if (etapa.actual) { <span class="etapa-actual">Estado actual</span> }</div>
+                        <p>{{ etapa.descripcion }}</p>
+                        <small>{{ etapa.fecha ? formatearFecha(etapa.fecha) : 'Pendiente' }}</small>
+                      </div>
+                    </li>
+                  }
+                  @if (seguimiento.cancelado) {
+                    <li class="etapa cancelacion-etapa"><div class="etapa-marcador">×</div><div class="etapa-contenido"><strong>Pedido cancelado</strong><p>La cancelación fue registrada.</p></div></li>
+                  }
+                </ol>
               </div>
             } @else {
-              <div class="aviso-cancelacion">Este pedido fue cancelado. El historial anterior se conserva para tu consulta.</div>
+              <div class="estado-vacio">Cargando la trazabilidad del pedido...</div>
             }
-
-            <ol class="linea-tiempo">
-              @for (etapa of seguimiento.etapas; track etapa.codigo; let ultima = $last) {
-                <li class="etapa" [class.completada]="etapa.completada"
-                  [class.actual]="etapa.actual" [class.pendiente]="etapa.pendiente">
-                  <div class="etapa-marcador" aria-hidden="true">
-                    @if (etapa.completada) { ✓ } @else { {{ $index + 1 }} }
-                  </div>
-                  <div class="etapa-contenido">
-                    <div class="etapa-encabezado">
-                      <strong>{{ etapa.titulo }}</strong>
-                      @if (etapa.actual) { <span class="etapa-actual">Estado actual</span> }
-                    </div>
-                    <p>{{ etapa.descripcion }}</p>
-                    <small>{{ etapa.fecha ? formatearFecha(etapa.fecha) : 'Pendiente' }}</small>
-                  </div>
-                </li>
-              }
-              @if (seguimiento.cancelado) {
-                <li class="etapa cancelacion-etapa">
-                  <div class="etapa-marcador" aria-hidden="true">×</div>
-                  <div class="etapa-contenido">
-                    <div class="etapa-encabezado"><strong>Pedido cancelado</strong><span class="etapa-actual">Estado final</span></div>
-                    <p>La solicitud de cancelación fue registrada.</p>
-                    <small>{{ formatearFecha(seguimiento.cancelacion) }}</small>
-                  </div>
-                </li>
-              }
-            </ol>
-            <button type="button" class="btn-secundario actualizar-seguimiento"
-              [disabled]="consultando()" (click)="consultarPedido()">
-              Actualizar seguimiento
-            </button>
-          </section>
-        } @else if (!consultando() && !errorConsulta()) {
-          <div class="estado-vacio">
-            Introduce un número de pedido para
-            consultar su trazabilidad.
+            @if (pedido.estado === 'PENDIENTE' && !cancelacionIndeterminada()) {
+              <button type="button" class="btn-peligro cancelar-activo" [disabled]="cancelando() || consultando()" (click)="cancelarPedido()">
+                {{ cancelando() ? 'Solicitando cancelación...' : 'Cancelar pedido pendiente' }}
+              </button>
+            }
+            <div class="seguimiento-pie">
+              <span>Los cambios del empleado se reflejan automáticamente.</span>
+              <button type="button" class="btn-secundario" [disabled]="cargandoPedidoActivo() || sincronizando()" (click)="cargarPedidoActivo()">Comprobar ahora</button>
+            </div>
+          </div>
+        } @else if (pedidoFinalizado(); as finalizado) {
+          <div class="panel estado-vacio seguimiento-vacio">
+            <strong>Tu pedido #{{ finalizado.id }} ya no está activo</strong>
+            <p>El restaurante finalizó su gestión. Consulta la trazabilidad si necesitas confirmar el estado final.</p>
+            @if (seguimiento(); as final) {
+              <span class="estado-seguimiento" [class.entregado]="final.estado === 'ENTREGADO'">{{ nombreEstado(final.estado) }}</span>
+            }
+            <button type="button" class="btn-principal" (click)="seleccionarSeccion('catalogo')">Explorar restaurantes</button>
+          </div>
+        } @else {
+          <div class="panel estado-vacio seguimiento-vacio">
+            <strong>No tienes pedidos activos</strong>
+            <p>Cuando realices un pedido, podrás seguir su preparación y entrega aquí.</p>
+            <button type="button" class="btn-principal" (click)="seleccionarSeccion('catalogo')">Explorar restaurantes</button>
           </div>
         }
       </section>
     }
   </main>
+  </div>
 </div>

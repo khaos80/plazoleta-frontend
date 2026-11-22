@@ -9,6 +9,7 @@ import {
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, map, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth';
 import {
@@ -17,6 +18,7 @@ import {
   PedidoService
 } from '../../core/services/pedido';
 import { obtenerMensajeHttp } from '../../core/utils/http-error';
+import { MiRestaurante, RestauranteService } from '../../core/services/restaurante';
 
 @Component({
   selector: 'app-empleado',
@@ -27,6 +29,7 @@ import { obtenerMensajeHttp } from '../../core/utils/http-error';
 })
 export class Empleado implements OnInit {
   private readonly pedidosApi = inject(PedidoService);
+  private readonly restaurantesApi = inject(RestauranteService);
   private readonly auth = inject(AuthService);
 
   readonly estados: {
@@ -60,6 +63,18 @@ export class Empleado implements OnInit {
       descripcion: 'Pedidos que fueron cancelados'
     }
   ];
+
+  readonly totalesEstado = signal<Partial<Record<EstadoPedido, number>>>({});
+  readonly cargandoResumen = signal(false);
+  readonly errorResumen = signal(false);
+  private solicitudResumen = 0;
+
+  readonly restaurante = signal<MiRestaurante | null>(null);
+  readonly cargandoRestaurante = signal(false);
+  readonly errorRestaurante = signal('');
+  private solicitudRestaurante = 0;
+
+  readonly sidebarAbierto = signal(false);
 
   readonly estadoSeleccionado = signal<EstadoPedido>('PENDIENTE');
   readonly pedidos = signal<Pedido[]>([]);
@@ -124,7 +139,90 @@ export class Empleado implements OnInit {
   });
 
   ngOnInit(): void {
-    this.cargarPedidos(0);
+    this.cargarRestaurante();
+  }
+
+  cargarRestaurante(): void {
+    const solicitud = ++this.solicitudRestaurante;
+    ++this.numeroSolicitud;
+    this.cargandoRestaurante.set(true);
+    this.errorRestaurante.set('');
+    this.restaurante.set(null);
+    ++this.solicitudResumen;
+    this.totalesEstado.set({});
+    this.errorResumen.set(false);
+    this.cargandoResumen.set(false);
+    this.pedidos.set([]);
+    this.totalElementos.set(0);
+    this.totalPaginas.set(0);
+    this.cargando.set(false);
+
+    this.restaurantesApi.obtenerMiRestauranteEmpleado().subscribe({
+      next: restaurante => {
+        if (solicitud !== this.solicitudRestaurante) return;
+        this.cargandoRestaurante.set(false);
+        if (!Number.isSafeInteger(restaurante.id) || restaurante.id <= 0) {
+          this.errorRestaurante.set('El servicio devolvió un restaurante no válido.');
+          return;
+        }
+        this.restaurante.set(restaurante);
+        this.cargarResumen();
+        this.cargarPedidos(0);
+      },
+      error: error => {
+        if (solicitud !== this.solicitudRestaurante) return;
+        this.cargandoRestaurante.set(false);
+        this.errorRestaurante.set(obtenerMensajeHttp(error));
+      }
+    });
+  }
+
+  cargarResumen(): void {
+    if (!this.restaurante()) return;
+    const solicitud = ++this.solicitudResumen;
+    this.cargandoResumen.set(true);
+    this.errorResumen.set(false);
+
+    forkJoin(
+      this.estados.map(({ valor }) =>
+        this.pedidosApi.listarPorEstado(valor, 0, 1).pipe(
+          map(respuesta => ({ valor, total: respuesta.totalElements as number | null })),
+          catchError(() => of({ valor, total: null }))
+        )
+      )
+    ).subscribe(resultados => {
+      if (solicitud !== this.solicitudResumen) return;
+      const totales: Partial<Record<EstadoPedido, number>> = {};
+      let incompleto = false;
+      for (const resultado of resultados) {
+        if (resultado.total === null || !Number.isFinite(resultado.total)) {
+          incompleto = true;
+        } else {
+          totales[resultado.valor] = resultado.total;
+        }
+      }
+      this.totalesEstado.set(totales);
+      this.errorResumen.set(incompleto);
+      this.cargandoResumen.set(false);
+    });
+  }
+
+  totalEstado(estado: EstadoPedido): string {
+    const total = this.totalesEstado()[estado];
+    return total === undefined ? '—' : String(total);
+  }
+
+  navegarAEstado(estado: EstadoPedido): void {
+    this.sidebarAbierto.set(false);
+    this.seleccionarEstado(estado);
+  }
+
+  alternarSidebar(): void {
+    this.sidebarAbierto.update(abierto => !abierto);
+  }
+
+  cerrarSidebar(): void {
+    this.sidebarAbierto.set(false);
   }
 
   seleccionarEstado(estado: EstadoPedido): void {
@@ -147,7 +245,7 @@ export class Empleado implements OnInit {
   }
 
   cargarPedidos(pagina = 0): void {
-    if (pagina < 0) return;
+    if (pagina < 0 || !this.restaurante()) return;
 
     const solicitud = ++this.numeroSolicitud;
     const estado = this.estadoSeleccionado();
@@ -178,6 +276,7 @@ export class Empleado implements OnInit {
 
   actualizar(): void {
     if (this.procesandoId() !== null) return;
+    this.cargarResumen();
     this.cargarPedidos(this.paginaActual());
   }
 
@@ -208,6 +307,7 @@ export class Empleado implements OnInit {
     this.pedidoEntrega.set(null);
     this.pin.set('');
     this.pinTocado.set(false);
+    this.cargarResumen();
     this.cargarPedidos(this.paginaActual());
   }
 
@@ -231,6 +331,7 @@ export class Empleado implements OnInit {
           `Pedido #${pedido.id} asignado correctamente. ` +
           'Puedes consultarlo en En preparación.'
         );
+        this.cargarResumen();
         this.cargarPedidos(this.paginaActual());
       },
       error: error => {
@@ -242,6 +343,7 @@ export class Empleado implements OnInit {
         );
 
         if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.cargarResumen();
           this.cargarPedidos(this.paginaActual());
         }
       }
@@ -267,6 +369,7 @@ export class Empleado implements OnInit {
         this.mensajeExito.set(
           respuesta.mensaje || `Pedido #${pedido.id} marcado como listo.`
         );
+        this.cargarResumen();
         this.cargarPedidos(this.paginaActual());
       },
       error: error => {
@@ -278,6 +381,7 @@ export class Empleado implements OnInit {
         );
 
         if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.cargarResumen();
           this.cargarPedidos(this.paginaActual());
         }
       }
@@ -355,6 +459,7 @@ export class Empleado implements OnInit {
         this.pedidoEntrega.set(null);
         this.pin.set('');
         this.pinTocado.set(false);
+        this.cargarResumen();
         this.cargarPedidos(this.paginaActual());
       },
       error: error => {
@@ -368,10 +473,15 @@ export class Empleado implements OnInit {
         if (error instanceof HttpErrorResponse && error.status === 409) {
           this.pedidoEntrega.set(null);
           this.pin.set('');
+          this.cargarResumen();
           this.cargarPedidos(this.paginaActual());
         }
       }
     });
+  }
+
+  unidadesPedido(pedido: Pedido): number {
+    return (pedido.platos ?? []).reduce((suma, detalle) => suma + detalle.cantidad, 0);
   }
 
   puedeMarcarListo(pedido: Pedido): boolean {

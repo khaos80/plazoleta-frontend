@@ -26,14 +26,21 @@ export class Login {
   correo = '';
   contrasena = '';
 
+  readonly mostrarContrasena = signal(false);
   readonly cargando = signal(false);
   readonly error = signal('');
 
   readonly registroExitoso =
     this.route.snapshot.queryParamMap.get('registro') === 'exitoso';
 
+  alternarVisibilidadContrasena(): void {
+    this.mostrarContrasena.update(valor => !valor);
+  }
+
   iniciarSesion(): void {
-    if (this.cargando()) return;
+    if (this.cargando()) {
+      return;
+    }
 
     this.error.set('');
 
@@ -75,7 +82,9 @@ export class Login {
     });
   }
 
-  private obtenerMensajeError(err: HttpErrorResponse): string {
+  private obtenerMensajeError(
+    err: HttpErrorResponse
+  ): string {
     switch (err.status) {
       case 0:
         return 'No se pudo conectar con el servidor.';

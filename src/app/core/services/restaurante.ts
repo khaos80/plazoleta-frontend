@@ -8,6 +8,18 @@ export interface RestauranteResumen {
   id: number;
   nombre: string;
   urlLogo: string | null;
+  nit: string;
+  propietarioId: number;
+}
+
+export interface MiRestaurante {
+  id: number;
+  nombre: string;
+  nit: string;
+  direccion: string;
+  telefono: string;
+  urlLogo: string | null;
+  propietarioId: number;
 }
 
 export interface PaginaRestaurantes {
@@ -39,12 +51,28 @@ export class RestauranteService {
   private readonly url =
     `${environment.api.restaurants}/api/v1/restaurantes`;
 
+  obtenerMiRestaurante(): Observable<MiRestaurante> {
+    return this.http.get<MiRestaurante>(`${this.url}/mi-restaurante`);
+  }
+
+  obtenerMiRestauranteEmpleado(): Observable<MiRestaurante> {
+    return this.http.get<MiRestaurante>(
+      `${this.url}/mi-restaurante-empleado`
+    );
+  }
+
   listar(page = 0, size = 10): Observable<PaginaRestaurantes> {
     const params = new HttpParams()
       .set('page', page)
       .set('size', size);
 
     return this.http.get<PaginaRestaurantes>(this.url, { params });
+  }
+
+  listarPropietariosAsignados(): Observable<number[]> {
+    return this.http.get<number[]>(
+      `${this.url}/propietarios-asignados`
+    );
   }
 
   verificarPropietario(

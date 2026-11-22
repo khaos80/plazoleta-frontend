@@ -23,6 +23,8 @@ export class Registro {
 
   readonly cargando = signal(false);
   readonly error = signal('');
+  readonly mostrarClave = signal(false);
+  readonly mostrarConfirmacion = signal(false);
 
   datos: CrearClienteRequest = {
     nombre: '',
@@ -35,15 +37,26 @@ export class Registro {
 
   confirmarClave = '';
 
+  alternarClave(): void {
+    this.mostrarClave.update(valor => !valor);
+  }
+
+  alternarConfirmacion(): void {
+    this.mostrarConfirmacion.update(valor => !valor);
+  }
+
   registrar(): void {
-    if (this.cargando()) return;
+    if (this.cargando()) {
+      return;
+    }
 
     this.error.set('');
 
     const datos: CrearClienteRequest = {
       nombre: this.datos.nombre.trim(),
       apellido: this.datos.apellido.trim(),
-      documentoDeIdentidad: this.datos.documentoDeIdentidad.trim(),
+      documentoDeIdentidad:
+        this.datos.documentoDeIdentidad.trim(),
       celular: this.datos.celular.trim(),
       correo: this.datos.correo.trim(),
       clave: this.datos.clave
@@ -101,7 +114,9 @@ export class Registro {
     });
   }
 
-  private obtenerMensajeError(err: HttpErrorResponse): string {
+  private obtenerMensajeError(
+    err: HttpErrorResponse
+  ): string {
     const mensajeBackend =
       typeof err.error?.mensaje === 'string'
         ? err.error.mensaje

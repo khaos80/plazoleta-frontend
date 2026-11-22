@@ -63,6 +63,11 @@ export class PedidoService {
     return this.http.post<PedidoCreadoResponse>(this.url, datos);
   }
 
+  // CLIENTE: el backend identifica al cliente desde su JWT.
+  obtenerMiPedidoActivo(): Observable<Pedido | null> {
+    return this.http.get<Pedido>(`${this.url}/mi-pedido-activo`);
+  }
+
   // CLIENTE: cancelar pedido
   cancelar(pedidoId: number): Observable<MensajeResponse> {
     return this.http.patch<MensajeResponse>(

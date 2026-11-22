@@ -14,8 +14,20 @@ export interface CrearPropietarioRequest {
   contrasena: string;
 }
 
-export interface MensajeAdministracionResponse {
+export interface CrearPropietarioResponse {
+  id: number;
+  nombre: string;
+  apellido: string;
+  correo: string;
+  rol: string;
   mensaje: string;
+}
+
+export interface PropietarioResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+  correo: string;
 }
 
 @Injectable({
@@ -24,10 +36,16 @@ export interface MensajeAdministracionResponse {
 export class AdministracionService {
   private readonly http = inject(HttpClient);
 
+  listarPropietarios(): Observable<PropietarioResumen[]> {
+    return this.http.get<PropietarioResumen[]>(
+      `${environment.api.users}/api/v1/propietarios`
+    );
+  }
+
   crearPropietario(
     datos: CrearPropietarioRequest
-  ): Observable<MensajeAdministracionResponse> {
-    return this.http.post<MensajeAdministracionResponse>(
+  ): Observable<CrearPropietarioResponse> {
+    return this.http.post<CrearPropietarioResponse>(
       `${environment.api.users}/api/v1/propietarios`,
       datos
     );

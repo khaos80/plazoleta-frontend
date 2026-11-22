@@ -1,4 +1,3 @@
-
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -6,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth';
-import { RestauranteService } from '../../core/services/restaurante';
+import { RestauranteService, MiRestaurante } from '../../core/services/restaurante';
 import {
   PlatoService, Plato, CrearPlatoRequest, ModificarPlatoRequest
 } from '../../core/services/plato';
@@ -68,11 +67,18 @@ export class Propietario {
   private readonly eficienciaApi = inject(EficienciaService);
   private readonly empleadosApi = inject(EmpleadoService);
 
+  // Navegación propia del módulo PROPIETARIO, independiente de ADMINISTRADOR.
+  readonly menuMovilAbierto = signal(false);
+
+  navegarA(seccion: Seccion): void {
+    this.seleccionarSeccion(seccion);
+    this.menuMovilAbierto.set(false);
+  }
+
   readonly seccion = signal<Seccion>('platos');
   readonly apartado = signal<Apartado>('disponibles');
 
-  readonly restauranteId = signal('');
-  readonly restauranteTocado = signal(false);
+  readonly restaurante = signal<MiRestaurante | null>(null);
   readonly restauranteActivo = signal<number | null>(null);
   readonly verificandoRestaurante = signal(false);
   readonly errorRestaurante = signal('');
@@ -248,85 +254,47 @@ export class Propietario {
     );
   }
 
-  cambiarRestauranteId(valor: string): void {
-    this.restauranteId.set(valor);
-    this.restauranteTocado.set(true);
-    this.restauranteActivo.set(null);
+  constructor() {
+    this.verificarRestaurante();
+  }
+
+  verificarRestaurante(): void {
+    const solicitud = ++this.solicitudRestaurante;
+    this.verificandoRestaurante.set(true);
     this.errorRestaurante.set('');
-    this.errorOperacion.set('');
-    this.mensajeExito.set('');
-    this.errorEmpleado.set('');
-    this.exitoEmpleado.set('');
+    this.restaurante.set(null);
+    this.restauranteActivo.set(null);
     this.platos.set([]);
     this.platosDeshabilitados.set([]);
     this.eficienciaPedidos.set([]);
     this.ranking.set([]);
     this.modoFormulario.set(null);
-    this.operacionIndeterminada.set(false);
     ++this.solicitudPlatos;
     ++this.solicitudEstadisticas;
-    ++this.solicitudRestaurante;
-  }
 
-  errorIdRestaurante(): string {
-    const valor = this.restauranteId().trim();
-
-    if (!/^[1-9]\d*$/.test(valor)) {
-      return 'Ingresa un ID entero y positivo.';
-    }
-
-    if (!Number.isSafeInteger(Number(valor))) {
-      return 'El ID indicado no es válido.';
-    }
-
-    return '';
-  }
-
-  verificarRestaurante(): void {
-    this.restauranteTocado.set(true);
-    this.errorRestaurante.set('');
-
-    if (this.errorIdRestaurante() || this.verificandoRestaurante()) {
-      return;
-    }
-
-    const usuarioId = this.obtenerUsuarioId();
-
-    if (usuarioId === null) {
-      this.errorRestaurante.set(
-        'No se pudo identificar al propietario. Inicia sesión nuevamente.'
-      );
-      return;
-    }
-
-    const restauranteId = Number(this.restauranteId());
-    const solicitud = ++this.solicitudRestaurante;
-    this.verificandoRestaurante.set(true);
-
-    this.restaurantesApi.verificarPropietario(
-      restauranteId, usuarioId
-    ).subscribe({
-      next: autorizado => {
+    this.restaurantesApi.obtenerMiRestaurante().subscribe({
+      next: restaurante => {
         if (solicitud !== this.solicitudRestaurante) return;
         this.verificandoRestaurante.set(false);
-
-        if (!autorizado) {
-          this.errorRestaurante.set(
-            'Este restaurante no pertenece al propietario autenticado.'
-          );
+        if (!Number.isSafeInteger(restaurante.id) || restaurante.id <= 0) {
+          this.errorRestaurante.set('El servicio devolvió un restaurante no válido.');
           return;
         }
-
-        this.restauranteActivo.set(restauranteId);
+        this.restaurante.set(restaurante);
+        this.restauranteActivo.set(restaurante.id);
         this.seccion.set('platos');
         this.apartado.set('disponibles');
-        this.cargarDeshabilitados(restauranteId);
+        this.cargarDeshabilitados(restaurante.id);
         this.cargarPlatos(0);
       },
       error: error => {
         if (solicitud !== this.solicitudRestaurante) return;
         this.verificandoRestaurante.set(false);
-        this.errorRestaurante.set(obtenerMensajeHttp(error));
+        this.errorRestaurante.set(
+          error instanceof HttpErrorResponse && error.status === 404
+            ? 'Tu usuario todavía no tiene un restaurante asignado.'
+            : obtenerMensajeHttp(error)
+        );
       }
     });
   }

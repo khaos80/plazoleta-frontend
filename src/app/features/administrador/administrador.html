@@ -1,703 +1,770 @@
 
 <div class="administrador-page">
 
-  <header class="topbar">
-    <div class="marca">
-      <span class="marca-icono" aria-hidden="true">P</span>
+  <!-- MENÚ LATERAL -->
+  <aside class="sidebar">
 
-      <div class="marca-texto">
-        <strong>PLAZOLETA</strong>
-        <small>Administración general</small>
-      </div>
+    <div class="sidebar-brand">
+      <strong>Plaza de Comidas</strong>
+      <span>Sistema de gestión</span>
     </div>
 
-    <div class="topbar-acciones">
-      <span class="rol-actual">
-        <span class="punto-rol"></span>
-        Administrador
-      </span>
+    <div class="sidebar-section-label">
+      ADMINISTRACIÓN
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Menú administrativo">
 
       <button
         type="button"
-        class="btn-secundario cerrar-sesion"
-        (click)="cerrarSesion()"
-      >
-        Cerrar sesión
-      </button>
-    </div>
-  </header>
-
-  <main class="contenido">
-
-    <section class="bienvenida">
-      <div>
-        <span class="etiqueta">CENTRO DE ADMINISTRACIÓN</span>
-
-        <h1>Panel del administrador</h1>
-
-        <p>
-          Gestiona propietarios, registra establecimientos
-          y consulta los restaurantes de la plazoleta.
-        </p>
-      </div>
-
-      <div class="bienvenida-icono" aria-hidden="true">
-        <span>01</span>
-        <small>GESTIÓN</small>
-      </div>
-    </section>
-
-    <section class="resumen" aria-label="Resumen administrativo">
-
-      <div class="resumen-card">
-        <div class="resumen-icono naranja">01</div>
-
-        <div>
-          <span>Gestión de propietarios</span>
-          <strong>Registro de usuarios</strong>
-          <small>Rol PROPIETARIO</small>
-        </div>
-      </div>
-
-      <div class="resumen-card">
-        <div class="resumen-icono azul">02</div>
-
-        <div>
-          <span>Gestión de restaurantes</span>
-          <strong>Creación y asignación</strong>
-          <small>Propietarios existentes</small>
-        </div>
-      </div>
-
-      <div class="resumen-card">
-        <div class="resumen-icono verde">03</div>
-
-        <div>
-          <span>Restaurantes registrados</span>
-          <strong class="numero-resumen">
-            {{ totalElementos() }}
-          </strong>
-          <small>Total informado por el servicio</small>
-        </div>
-      </div>
-
-    </section>
-
-    <nav class="pestanas" aria-label="Opciones administrativas">
-
-      <button
-        type="button"
-        [class.activa]="seccion() === 'propietarios'"
-        [attr.aria-current]="
-          seccion() === 'propietarios' ? 'page' : null
-        "
+        [class.active]="seccion() === 'propietarios'"
+        [disabled]="guardando()"
         (click)="seleccionarSeccion('propietarios')"
       >
-        <span class="pestana-numero">01</span>
-        <span>Registrar propietario</span>
+        <span class="nav-icon" aria-hidden="true">01</span>
+        <span>Propietarios</span>
       </button>
 
       <button
         type="button"
-        [class.activa]="seccion() === 'restaurantes'"
-        [attr.aria-current]="
-          seccion() === 'restaurantes' ? 'page' : null
-        "
+        [class.active]="seccion() === 'restaurantes'"
+        [disabled]="guardando()"
         (click)="seleccionarSeccion('restaurantes')"
       >
-        <span class="pestana-numero">02</span>
+        <span class="nav-icon" aria-hidden="true">02</span>
         <span>Crear restaurante</span>
       </button>
 
       <button
         type="button"
-        [class.activa]="seccion() === 'listado'"
-        [attr.aria-current]="
-          seccion() === 'listado' ? 'page' : null
-        "
+        [class.active]="seccion() === 'listado'"
+        [disabled]="guardando()"
         (click)="seleccionarSeccion('listado')"
       >
-        <span class="pestana-numero">03</span>
-        <span>Consultar restaurantes</span>
+        <span class="nav-icon" aria-hidden="true">03</span>
+        <span>Restaurantes</span>
       </button>
 
     </nav>
 
-    @if (error()) {
-      <div class="alerta error" role="alert">
-        <strong>No se pudo completar la operación</strong>
-        <p>{{ error() }}</p>
-      </div>
-    }
+    <div class="sidebar-footer">
 
-    @if (exito()) {
-      <div class="alerta exito" role="status">
-        <strong>Operación realizada correctamente</strong>
-        <p>{{ exito() }}</p>
-      </div>
-    }
+      <div class="sidebar-user">
+        <div class="user-avatar" aria-hidden="true">A</div>
 
-    @if (resultadoIndeterminado()) {
-      <div class="alerta advertencia" role="alert">
-        <strong>Resultado pendiente de verificación</strong>
+        <div class="user-details">
+          <strong>Administrador</strong>
+          <span>Acceso administrativo</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="logout-button"
+        (click)="cerrarSesion()"
+      >
+        Cerrar sesión
+      </button>
+
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="main-layout">
+
+    <header class="topbar">
+
+      <div class="topbar-title">
+        <span>Panel administrativo</span>
+        <small>Plaza de Comidas</small>
+      </div>
+
+      <div class="topbar-role">
+        <span class="role-indicator"></span>
+        Administrador
+      </div>
+
+    </header>
+
+    <main class="main-content">
+
+      <section class="page-heading">
+        <span class="eyebrow">
+          ADMINISTRACIÓN GENERAL
+        </span>
+
+        <h1>Panel de administrador</h1>
 
         <p>
-          La respuesta del servidor no permite determinar
-          con certeza si el registro se guardó.
-          Comprueba los datos antes de volver a enviarlos.
+          Gestiona propietarios y restaurantes
+          desde un único lugar.
         </p>
-
-        <button
-          type="button"
-          class="btn-revision"
-          [disabled]="guardando()"
-          (click)="confirmarRevisionResultado()"
-        >
-          Ya revisé el resultado
-        </button>
-      </div>
-    }
-
-    @if (seccion() === 'propietarios') {
-
-      <section class="panel">
-
-        <div class="cabecera-panel">
-          <div class="numero-seccion">01</div>
-
-          <div>
-            <span class="sobre-titulo">ADMINISTRACIÓN DE USUARIOS</span>
-            <h2>Registrar propietario</h2>
-            <p>
-              Crea una cuenta con rol PROPIETARIO
-              para administrar establecimientos.
-            </p>
-          </div>
-        </div>
-
-        <form
-          (ngSubmit)="registrarPropietario()"
-          novalidate
-        >
-
-          <div class="subtitulo-formulario">
-            <h3>Información personal y de acceso</h3>
-            <p>
-              Los campos marcados con
-              <span class="required">*</span>
-              son obligatorios.
-            </p>
-          </div>
-
-          <div class="form-grid">
-
-            @for (
-              item of camposPropietario;
-              track item.campo
-            ) {
-
-              <div class="campo">
-
-                <label [for]="'prop-' + item.campo">
-                  {{ item.etiqueta }}
-                  <span class="required">*</span>
-                </label>
-
-                <input
-                  [id]="'prop-' + item.campo"
-                  [name]="item.campo"
-                  [type]="tipoCampoPropietario(item)"
-                  [placeholder]="item.placeholder"
-                  [ngModel]="propietario()[item.campo]"
-                  (ngModelChange)="
-                    cambiarPropietario(item.campo, $event)
-                  "
-                  (blur)="tocarPropietario(item.campo)"
-                  [disabled]="guardando()"
-                  [attr.autocomplete]="
-                    item.campo === 'correo'
-                      ? 'email'
-                      : item.tipo === 'password'
-                        ? 'new-password'
-                        : 'off'
-                  "
-                  [attr.aria-invalid]="
-                    tocadosPropietario()[item.campo] &&
-                    !!errorPropietario(item.campo)
-                  "
-                  [class.input-error]="
-                    tocadosPropietario()[item.campo] &&
-                    !!errorPropietario(item.campo)
-                  "
-                  [class.input-success]="
-                    tocadosPropietario()[item.campo] &&
-                    !errorPropietario(item.campo)
-                  "
-                />
-
-                @if (item.ayuda) {
-                  <small class="field-help">
-                    {{ item.ayuda }}
-                  </small>
-                }
-
-                @if (
-                  tocadosPropietario()[item.campo] &&
-                  errorPropietario(item.campo)
-                ) {
-                  <small class="field-error">
-                    {{ errorPropietario(item.campo) }}
-                  </small>
-                }
-
-              </div>
-            }
-
-          </div>
-
-          <div class="opciones-formulario">
-            <label class="opcion-checkbox">
-              <input
-                type="checkbox"
-                [checked]="mostrarContrasenas()"
-                (change)="alternarVisibilidadContrasenas()"
-              />
-              Mostrar contraseñas
-            </label>
-          </div>
-
-          <div class="nota-informativa">
-            <strong>Información importante</strong>
-            <p>
-              Al completar el registro, el propietario
-              podrá iniciar sesión con las credenciales creadas.
-              El servicio actual confirma la creación, pero
-              no devuelve el ID del nuevo usuario.
-            </p>
-          </div>
-
-          <div class="acciones-formulario">
-            <span class="texto-acciones">
-              Revisa el documento y el correo antes de guardar.
-            </span>
-
-            <button
-              type="submit"
-              class="btn-principal"
-              [disabled]="
-                !propietarioValido() ||
-                guardando() ||
-                resultadoIndeterminado()
-              "
-            >
-              {{
-                guardando()
-                  ? 'Registrando propietario...'
-                  : 'Registrar propietario'
-              }}
-            </button>
-          </div>
-
-        </form>
-
       </section>
-    }
 
-    @if (seccion() === 'restaurantes') {
+      <!-- MENSAJES GENERALES -->
 
-      <section class="panel">
-
-        <div class="cabecera-panel">
-          <div class="numero-seccion">02</div>
-
-          <div>
-            <span class="sobre-titulo">GESTIÓN DE ESTABLECIMIENTOS</span>
-            <h2>Crear restaurante</h2>
-            <p>
-              Registra un restaurante y asígnalo
-              a un propietario existente.
-            </p>
-          </div>
+      @if (error()) {
+        <div class="alert alert-error" role="alert">
+          <strong>No se pudo completar la operación</strong>
+          <p>{{ error() }}</p>
         </div>
+      }
 
-        <form
-          (ngSubmit)="crearRestaurante()"
-          novalidate
-        >
+      @if (exito()) {
+        <div class="alert alert-success" role="status">
+          <strong>Operación realizada correctamente</strong>
+          <p>{{ exito() }}</p>
+        </div>
+      }
 
-          <div class="subtitulo-formulario">
-            <h3>Información del establecimiento</h3>
-            <p>
-              Completa los datos comerciales
-              y la asignación del propietario.
-            </p>
-          </div>
+      @if (resultadoIndeterminado()) {
+        <div class="alert alert-warning" role="alert">
+          <strong>Resultado pendiente de verificación</strong>
+          <p>
+            No se pudo determinar con certeza si el registro
+            fue guardado. Comprueba los datos antes de
+            intentar nuevamente.
+          </p>
 
-          <div class="form-grid">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="guardando()"
+            (click)="confirmarRevisionResultado()"
+          >
+            Ya revisé el resultado
+          </button>
+        </div>
+      }
 
-            @for (
-              item of camposRestaurante;
-              track item.campo
-            ) {
+      <!-- SECCIÓN: PROPIETARIOS -->
 
-              <div
-                class="campo"
-                [class.campo-ancho]="item.campo === 'direccion'"
-              >
+      @if (seccion() === 'propietarios') {
 
-                <label [for]="'rest-' + item.campo">
-                  {{ item.etiqueta }}
-                  <span class="required">*</span>
-                </label>
+        <section class="content-panel">
 
-                <input
-                  [id]="'rest-' + item.campo"
-                  [name]="item.campo"
-                  [type]="item.tipo"
-                  [placeholder]="item.placeholder"
-                  [ngModel]="restaurante()[item.campo]"
-                  (ngModelChange)="
-                    cambiarRestaurante(item.campo, $event)
-                  "
-                  (blur)="tocarRestaurante(item.campo)"
-                  [disabled]="guardando()"
-                  [attr.aria-invalid]="
-                    tocadosRestaurante()[item.campo] &&
-                    !!errorRestaurante(item.campo)
-                  "
-                  [class.input-error]="
-                    tocadosRestaurante()[item.campo] &&
-                    !!errorRestaurante(item.campo)
-                  "
-                  [class.input-success]="
-                    tocadosRestaurante()[item.campo] &&
-                    !errorRestaurante(item.campo)
-                  "
-                />
-
-                @if (item.ayuda) {
-                  <small class="field-help">
-                    {{ item.ayuda }}
-                  </small>
-                }
-
-                @if (
-                  tocadosRestaurante()[item.campo] &&
-                  errorRestaurante(item.campo)
-                ) {
-                  <small class="field-error">
-                    {{ errorRestaurante(item.campo) }}
-                  </small>
-                }
-
-              </div>
-            }
-
-          </div>
-
-          @if (restaurante().urlLogo.trim()) {
-            <div class="vista-logo">
-              <div class="vista-logo-icono">P</div>
-
-              <div>
-                <strong>Logo configurado</strong>
-                <p>
-                  Se enviará la URL indicada al microservicio.
-                  La disponibilidad de la imagen depende
-                  del servidor que la aloja.
-                </p>
-              </div>
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">GESTIÓN DE USUARIOS</span>
+              <h2>Registrar propietario</h2>
+              <p>
+                Crea una cuenta para administrar
+                un establecimiento de la plazoleta.
+              </p>
             </div>
+
+            <span class="panel-number">01</span>
+          </div>
+
+          <!-- CONFIRMACIÓN DE REGISTRO -->
+
+          @if (propietarioCreado(); as creado) {
+
+            <div class="created-card" role="status">
+
+              <div class="created-heading">
+                <span class="created-icon" aria-hidden="true">
+                  ✓
+                </span>
+
+                <div>
+                  <h3>Propietario registrado correctamente</h3>
+                  <p>
+                    La cuenta fue creada y está disponible
+                    para asignarle un restaurante.
+                  </p>
+                </div>
+              </div>
+
+              <div class="created-details">
+
+                <div class="created-id">
+                  <span>ID del propietario</span>
+                  <strong>#{{ creado.id }}</strong>
+                </div>
+
+                <div class="created-data">
+                  <span>Nombre completo</span>
+                  <strong>
+                    {{ creado.nombre }}
+                    {{ creado.apellido }}
+                  </strong>
+                </div>
+
+                <div class="created-data full-width">
+                  <span>Correo electrónico</span>
+                  <strong>{{ creado.correo }}</strong>
+                </div>
+
+                <div class="created-data">
+                  <span>Rol asignado</span>
+                  <strong>{{ creado.rol }}</strong>
+                </div>
+
+              </div>
+
+              <div class="created-actions">
+
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="nuevoRegistroPropietario()"
+                >
+                  Registrar otro propietario
+                </button>
+
+                <button
+                  type="button"
+                  class="primary-button"
+                  (click)="crearRestauranteParaPropietario()"
+                >
+                  Crear restaurante para este propietario
+                  <span aria-hidden="true">→</span>
+                </button>
+
+              </div>
+
+            </div>
+
+          } @else {
+
+            <!-- FORMULARIO DE PROPIETARIO -->
+
+            <form
+              (ngSubmit)="registrarPropietario()"
+              novalidate
+            >
+
+              <div class="form-heading">
+                <h3>Información personal y de acceso</h3>
+                <p>Todos los campos son obligatorios.</p>
+              </div>
+
+              <div class="form-grid">
+
+                @for (
+                  item of camposPropietario;
+                  track item.campo
+                ) {
+
+                  <div class="form-field">
+
+                    <label [for]="'prop-' + item.campo">
+                      {{ item.etiqueta }}
+                      <span class="required">*</span>
+                    </label>
+
+                    <input
+                      [id]="'prop-' + item.campo"
+                      [name]="item.campo"
+                      [type]="tipoCampoPropietario(item)"
+                      [placeholder]="item.placeholder"
+                      [ngModel]="propietario()[item.campo]"
+                      (ngModelChange)="
+                        cambiarPropietario(item.campo, $event)
+                      "
+                      (blur)="tocarPropietario(item.campo)"
+                      [disabled]="guardando()"
+                      [attr.autocomplete]="
+                        item.campo === 'correo'
+                          ? 'email'
+                          : item.tipo === 'password'
+                            ? 'new-password'
+                            : 'off'
+                      "
+                      [attr.aria-invalid]="
+                        tocadosPropietario()[item.campo] &&
+                        !!errorPropietario(item.campo)
+                      "
+                      [class.input-error]="
+                        tocadosPropietario()[item.campo] &&
+                        !!errorPropietario(item.campo)
+                      "
+                    />
+
+                    @if (item.ayuda) {
+                      <small class="field-help">
+                        {{ item.ayuda }}
+                      </small>
+                    }
+
+                    @if (
+                      tocadosPropietario()[item.campo] &&
+                      errorPropietario(item.campo)
+                    ) {
+                      <small class="field-error">
+                        {{ errorPropietario(item.campo) }}
+                      </small>
+                    }
+
+                  </div>
+                }
+
+              </div>
+
+              <label class="checkbox-option">
+                <input
+                  type="checkbox"
+                  [checked]="mostrarContrasenas()"
+                  (change)="alternarVisibilidadContrasenas()"
+                />
+                Mostrar contraseñas
+              </label>
+
+              <div class="form-actions">
+                <p>
+                  Verifica la información antes
+                  de registrar al propietario.
+                </p>
+
+                <button
+                  type="submit"
+                  class="primary-button"
+                  [disabled]="
+                    !propietarioValido() ||
+                    guardando() ||
+                    resultadoIndeterminado()
+                  "
+                >
+                  {{
+                    guardando()
+                      ? 'Registrando propietario...'
+                      : 'Registrar propietario'
+                  }}
+                </button>
+              </div>
+
+            </form>
+
           }
 
-          <div class="nota-informativa">
-            <strong>Asignación del propietario</strong>
+        </section>
 
-            <p>
-              Ingresa el ID numérico de un usuario
-              registrado con rol PROPIETARIO.
-              El microservicio verificará esa condición
-              antes de crear el restaurante.
-            </p>
-          </div>
+      }
 
-          <div class="acciones-formulario">
-            <span class="texto-acciones">
-              Verifica el NIT y el ID del propietario
-              antes de guardar.
-            </span>
+      <!-- SECCIÓN: CREAR RESTAURANTE -->
 
-            <button
-              type="submit"
-              class="btn-principal"
-              [disabled]="
-                !restauranteValido() ||
-                guardando() ||
-                resultadoIndeterminado()
-              "
-            >
-              {{
-                guardando()
-                  ? 'Creando restaurante...'
-                  : 'Crear restaurante'
-              }}
-            </button>
-          </div>
+      @if (seccion() === 'restaurantes') {
 
-        </form>
+        <section class="content-panel">
 
-      </section>
-    }
-
-    @if (seccion() === 'listado') {
-
-      <section class="panel">
-
-        <div class="cabecera-panel cabecera-listado">
-
-          <div class="cabecera-listado-titulo">
-            <div class="numero-seccion">03</div>
-
+          <div class="panel-header">
             <div>
-              <span class="sobre-titulo">
+              <span class="eyebrow">
+                GESTIÓN DE ESTABLECIMIENTOS
+              </span>
+
+              <h2>Crear restaurante</h2>
+
+              <p>
+                Registra un establecimiento y asígnalo
+                a un propietario existente.
+              </p>
+            </div>
+
+            <span class="panel-number">02</span>
+          </div>
+
+          @if (
+            propietarioCreado();
+            as creado
+          ) {
+            @if (
+              restaurante().propietarioId ===
+              creado.id.toString()
+            ) {
+              <div class="assigned-owner">
+                <span class="assigned-owner-icon">✓</span>
+
+                <div>
+                  <strong>
+                    Propietario seleccionado:
+                    {{ creado.nombre }} {{ creado.apellido }}
+                  </strong>
+
+                  <p>
+                    ID #{{ creado.id }} precargado
+                    automáticamente.
+                  </p>
+                </div>
+              </div>
+            }
+          }
+
+          <form
+            (ngSubmit)="crearRestaurante()"
+            novalidate
+          >
+
+            <div class="form-heading">
+              <h3>Información del establecimiento</h3>
+              <p>
+                Completa los datos comerciales
+                y la asignación del propietario.
+              </p>
+            </div>
+
+            <div class="form-grid">
+
+              @for (
+                item of camposRestaurante;
+                track item.campo
+              ) {
+
+                <div
+                  class="form-field"
+                  [class.full-width]="
+                    item.campo === 'direccion'
+                  "
+                >
+
+                  <label [for]="'rest-' + item.campo">
+                    {{ item.etiqueta }}
+                    <span class="required">*</span>
+                  </label>
+
+                  @if (item.campo === 'propietarioId') {
+                    <select
+                      [id]="'rest-' + item.campo"
+                      [name]="item.campo"
+                      [ngModel]="restaurante().propietarioId"
+                      (ngModelChange)="cambiarRestaurante('propietarioId', $event)"
+                      (blur)="tocarRestaurante('propietarioId')"
+                      [disabled]="guardando() || cargandoPropietarios() || !!errorPropietarios()"
+                      [class.input-error]="tocadosRestaurante()['propietarioId'] && !!errorRestaurante('propietarioId')"
+                    >
+                      <option value="">Selecciona un propietario disponible</option>
+                      @for (opcion of propietariosDisponibles(); track opcion.id) {
+                        <option [value]="opcion.id">
+                          {{ opcion.nombre }} {{ opcion.apellido }} — ID #{{ opcion.id }}
+                        </option>
+                      }
+                    </select>
+                    @if (cargandoPropietarios()) {
+                      <small class="field-help">Consultando propietarios disponibles...</small>
+                    }
+                    @if (errorPropietarios()) {
+                      <small class="field-error">{{ errorPropietarios() }}</small>
+                      <button type="button" class="secondary-button retry-owners" (click)="cargarPropietariosDisponibles()">
+                        Reintentar consulta
+                      </button>
+                    }
+                    @if (!cargandoPropietarios() && !errorPropietarios() && propietariosDisponibles().length === 0) {
+                      <small class="field-help">No hay propietarios disponibles. Registra uno nuevo para continuar.</small>
+                    }
+                  } @else {
+                  <input
+                    [id]="'rest-' + item.campo"
+                    [name]="item.campo"
+                    [type]="item.tipo"
+                    [placeholder]="item.placeholder"
+                    [ngModel]="restaurante()[item.campo]"
+                    (ngModelChange)="
+                      cambiarRestaurante(item.campo, $event)
+                    "
+                    (blur)="tocarRestaurante(item.campo)"
+                    [disabled]="guardando()"
+                    [attr.aria-invalid]="
+                      tocadosRestaurante()[item.campo] &&
+                      !!errorRestaurante(item.campo)
+                    "
+                    [class.input-error]="
+                      tocadosRestaurante()[item.campo] &&
+                      !!errorRestaurante(item.campo)
+                    "
+                  />
+                  }
+
+                  @if (item.ayuda) {
+                    <small class="field-help">
+                      {{ item.ayuda }}
+                    </small>
+                  }
+
+                  @if (
+                    tocadosRestaurante()[item.campo] &&
+                    errorRestaurante(item.campo)
+                  ) {
+                    <small class="field-error">
+                      {{ errorRestaurante(item.campo) }}
+                    </small>
+                  }
+
+                </div>
+
+              }
+
+            </div>
+
+            <div class="form-actions">
+              <p>
+                Verifica el NIT y el propietario seleccionado
+                antes de guardar.
+              </p>
+
+              <button
+                type="submit"
+                class="primary-button"
+                [disabled]="
+                  !restauranteValido() ||
+                  guardando() ||
+                  resultadoIndeterminado() ||
+                  cargandoPropietarios() ||
+                  !!errorPropietarios()
+                "
+              >
+                {{
+                  guardando()
+                    ? 'Creando restaurante...'
+                    : 'Crear restaurante'
+                }}
+              </button>
+            </div>
+
+          </form>
+
+        </section>
+
+      }
+
+      <!-- SECCIÓN: LISTADO DE RESTAURANTES -->
+
+      @if (seccion() === 'listado') {
+
+        <section class="content-panel">
+
+          <div class="panel-header panel-header-list">
+            <div>
+              <span class="eyebrow">
                 CONSULTA DE ESTABLECIMIENTOS
               </span>
 
               <h2>Restaurantes registrados</h2>
 
               <p>
-                Consulta los establecimientos
-                y sus identificadores reales.
+                Consulta los restaurantes
+                y sus identificadores.
               </p>
             </div>
-          </div>
 
-          <button
-            type="button"
-            class="btn-secundario"
-            [disabled]="cargandoListado()"
-            (click)="cargarRestaurantes(pagina())"
-          >
-            {{
-              cargandoListado()
-                ? 'Actualizando...'
-                : 'Actualizar listado'
-            }}
-          </button>
-
-        </div>
-
-        <div class="estadisticas-listado">
-
-          <div class="estadistica">
-            <span>Total de restaurantes</span>
-            <strong>{{ totalElementos() }}</strong>
-          </div>
-
-          <div class="estadistica">
-            <span>Página actual</span>
-            <strong>
+            <button
+              type="button"
+              class="secondary-button"
+              [disabled]="cargandoListado()"
+              (click)="cargarRestaurantes(pagina())"
+            >
               {{
-                totalPaginas() > 0
-                  ? pagina() + 1
-                  : 0
+                cargandoListado()
+                  ? 'Actualizando...'
+                  : 'Actualizar listado'
               }}
-              / {{ totalPaginas() }}
-            </strong>
+            </button>
           </div>
 
-          <div class="estadistica">
-            <span>Resultados visibles</span>
-            <strong>{{ totalVisibles() }}</strong>
+          <div class="list-stats">
+
+            <div>
+              <span>Total de restaurantes</span>
+              <strong>{{ totalElementos() }}</strong>
+            </div>
+
+            <div>
+              <span>Página actual</span>
+              <strong>
+                {{
+                  totalPaginas() > 0
+                    ? pagina() + 1
+                    : 0
+                }} / {{ totalPaginas() }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Resultados visibles</span>
+              <strong>{{ totalVisibles() }}</strong>
+            </div>
+
           </div>
 
-        </div>
+          <div class="list-toolbar">
 
-        <div class="herramientas-listado">
+            <div class="search-field">
+              <label for="buscar-restaurante">
+                Buscar en esta página
+              </label>
 
-          <div class="buscador">
-            <label for="buscar-restaurante">
-              Buscar en esta página
-            </label>
+              <input
+                id="buscar-restaurante"
+                name="buscarRestaurante"
+                type="search"
+                placeholder="Buscar por nombre o ID..."
+                [ngModel]="busqueda()"
+                (ngModelChange)="cambiarBusqueda($event)"
+              />
+            </div>
 
-            <input
-              id="buscar-restaurante"
-              name="buscarRestaurante"
-              type="search"
-              placeholder="Buscar por nombre o ID..."
-              [ngModel]="busqueda()"
-              (ngModelChange)="cambiarBusqueda($event)"
-            />
+            <small>
+              La búsqueda se aplica a la página cargada.
+            </small>
+
           </div>
 
-          <p>
-            La búsqueda se aplica únicamente
-            a los resultados de la página cargada.
-          </p>
+          @if (errorListado()) {
+            <div class="alert alert-error" role="alert">
+              <strong>Error al consultar restaurantes</strong>
+              <p>{{ errorListado() }}</p>
+            </div>
+          }
 
-        </div>
+          @if (cargandoListado()) {
 
-        @if (errorListado()) {
-          <div class="alerta error" role="alert">
-            <strong>Error al consultar restaurantes</strong>
-            <p>{{ errorListado() }}</p>
-          </div>
-        }
+            <div class="empty-state" role="status">
+              <strong>Cargando restaurantes</strong>
+              <p>Consultando el microservicio...</p>
+            </div>
 
-        @if (cargandoListado()) {
+          } @else if (errorListado()) {
 
-          <div
-            class="estado-vacio"
-            role="status"
-            aria-live="polite"
-          >
-            <div class="cargando-icono"></div>
-            <strong>Cargando restaurantes</strong>
-            <p>Consultando los datos del microservicio...</p>
-          </div>
+            <div class="empty-state">
+              <strong>No fue posible cargar el listado</strong>
+              <p>
+                Revisa el mensaje de error
+                y vuelve a intentar.
+              </p>
+            </div>
 
-        } @else if (errorListado()) {
+          } @else if (!restaurantes().length) {
 
-          <div class="estado-vacio">
-            <strong>No fue posible cargar el listado</strong>
-            <p>
-              Revisa el mensaje anterior
-              y utiliza Actualizar listado para reintentar.
-            </p>
-          </div>
+            <div class="empty-state">
+              <strong>No hay restaurantes registrados</strong>
+              <p>
+                Los establecimientos creados
+                aparecerán aquí.
+              </p>
+            </div>
 
-        } @else if (!restaurantes().length) {
+          } @else if (!restaurantesFiltrados().length) {
 
-          <div class="estado-vacio">
-            <div class="vacio-icono">P</div>
-            <strong>No hay restaurantes registrados</strong>
-            <p>
-              Los establecimientos creados
-              aparecerán aquí.
-            </p>
-          </div>
+            <div class="empty-state">
+              <strong>Sin coincidencias</strong>
+              <p>
+                No hay resultados para la búsqueda
+                actual en esta página.
+              </p>
+            </div>
 
-        } @else if (!restaurantesFiltrados().length) {
+          } @else {
 
-          <div class="estado-vacio">
-            <strong>Sin coincidencias</strong>
-            <p>
-              No hay restaurantes que coincidan
-              con la búsqueda en esta página.
-            </p>
-          </div>
+            <div class="restaurants-grid">
 
-        } @else {
+              @for (
+                item of restaurantesFiltrados();
+                track item.id
+              ) {
 
-          <div class="restaurantes-grid">
+                <article class="restaurant-card">
 
-            @for (
-              item of restaurantesFiltrados();
-              track item.id
-            ) {
+                  <div class="restaurant-image">
 
-              <article class="restaurante-card">
+                    @if (imagenDisponible(item)) {
+                      <img
+                        [src]="item.urlLogo!"
+                        [alt]="'Logo de ' + item.nombre"
+                        loading="lazy"
+                        (error)="marcarImagenFallida(item.id)"
+                      />
+                    } @else {
+                      <div class="image-placeholder">
+                        <strong>
+                          {{
+                            item.nombre.charAt(0).toUpperCase()
+                          }}
+                        </strong>
+                        <small>Imagen no disponible</small>
+                      </div>
+                    }
 
-                <div class="imagen-restaurante">
+                  </div>
 
-                  @if (imagenDisponible(item)) {
-
-                    <img
-                      [src]="item.urlLogo!"
-                      [alt]="'Logo de ' + item.nombre"
-                      loading="lazy"
-                      (error)="marcarImagenFallida(item.id)"
-                    />
-
-                  } @else {
-
-                    <div class="imagen-alternativa">
-                      <span aria-hidden="true">
-                        {{ item.nombre.charAt(0).toUpperCase() }}
-                      </span>
-                      <small>Imagen no disponible</small>
+                  <div class="restaurant-body">
+                    <div class="restaurant-heading">
+                      <h3>{{ item.nombre }}</h3>
+                      <span class="restaurant-id">#{{ item.id }}</span>
                     </div>
 
-                  }
+                    <div class="restaurant-information">
+                      <div class="restaurant-info-row">
+                        <span class="restaurant-info-icon" aria-hidden="true">▤</span>
+                        <div>
+                          <span class="restaurant-info-label">NIT</span>
+                          <strong>{{ item.nit }}</strong>
+                        </div>
+                      </div>
 
-                  <span class="id-sobre-imagen">
-                    ID #{{ item.id }}
-                  </span>
-
-                </div>
-
-                <div class="restaurante-datos">
-
-                  <span class="categoria-tarjeta">
-                    ESTABLECIMIENTO REGISTRADO
-                  </span>
-
-                  <h3>{{ item.nombre }}</h3>
-
-                  <div class="dato-identificador">
-                    <span>Identificador</span>
-                    <strong>#{{ item.id }}</strong>
+                      <div class="restaurant-info-row">
+                        <span class="restaurant-info-icon" aria-hidden="true">♙</span>
+                        <div>
+                          <span class="restaurant-info-label">Propietario</span>
+                          <strong>{{ nombrePropietario(item.propietarioId) }}</strong>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="estado-restaurante">
-                    <span class="punto-estado"></span>
-                    Registrado en el sistema
-                  </div>
+                </article>
 
-                </div>
+              }
 
-              </article>
+            </div>
 
-            }
+          }
 
-          </div>
+          @if (totalPaginas() > 1) {
 
-        }
+            <div class="pagination">
 
-        @if (totalPaginas() > 1) {
+              <button
+                type="button"
+                [disabled]="
+                  pagina() === 0 ||
+                  cargandoListado()
+                "
+                (click)="cargarRestaurantes(pagina() - 1)"
+              >
+                Anterior
+              </button>
 
-          <div class="paginacion">
+              <span>
+                Página {{ pagina() + 1 }}
+                de {{ totalPaginas() }}
+              </span>
 
-            <button
-              type="button"
-              [disabled]="
-                pagina() === 0 ||
-                cargandoListado()
-              "
-              (click)="cargarRestaurantes(pagina() - 1)"
-            >
-              Anterior
-            </button>
+              <button
+                type="button"
+                [disabled]="
+                  pagina() + 1 >= totalPaginas() ||
+                  cargandoListado()
+                "
+                (click)="cargarRestaurantes(pagina() + 1)"
+              >
+                Siguiente
+              </button>
 
-            <span>
-              Página {{ pagina() + 1 }}
-              de {{ totalPaginas() }}
-            </span>
+            </div>
 
-            <button
-              type="button"
-              [disabled]="
-                pagina() + 1 >= totalPaginas() ||
-                cargandoListado()
-              "
-              (click)="cargarRestaurantes(pagina() + 1)"
-            >
-              Siguiente
-            </button>
+          }
 
-          </div>
+          <p class="list-note">
+            La búsqueda se realiza sobre los restaurantes
+            recibidos en la página actual.
+          </p>
 
-        }
+        </section>
 
-        <div class="nota-listado">
-          La consulta muestra los datos que entrega
-          actualmente el microservicio:
-          ID, nombre y URL del logo.
-        </div>
+      }
 
-      </section>
-    }
+    </main>
 
-  </main>
+  </div>
 
 </div>

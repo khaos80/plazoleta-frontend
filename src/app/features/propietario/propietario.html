@@ -1,127 +1,132 @@
-
 <div class="propietario-page">
-  <header class="topbar">
-    <div class="marca">
-      <span class="marca-icono">P</span>
-      <div>
-        <strong>PLAZOLETA</strong>
-        <small>Administración de restaurantes</small>
-      </div>
+  <aside class="propietario-sidebar" [class.abierto]="menuMovilAbierto()" aria-label="Menú del propietario">
+    <div class="sidebar-marca">
+      <span class="sidebar-marca-icono">P</span>
+      <div><strong>Plaza de Comidas</strong><small>Gestión de restaurantes</small></div>
+      <button type="button" class="sidebar-cerrar-movil" aria-label="Cerrar menú" (click)="menuMovilAbierto.set(false)">×</button>
     </div>
 
-    <div class="topbar-acciones">
-      <span class="etiqueta-rol">PROPIETARIO</span>
-      <button type="button" class="btn-secundario" (click)="cerrarSesion()">
-        Cerrar sesión
+    <div class="sidebar-navegacion">
+      <p class="sidebar-grupo">ADMINISTRACIÓN</p>
+      <button type="button" class="sidebar-opcion" [class.activa]="seccion() === 'platos'"
+        [disabled]="restauranteActivo() === null" (click)="navegarA('platos')">
+        <span class="sidebar-numero">01</span><span>Gestión de platos</span>
+      </button>
+      <button type="button" class="sidebar-opcion" [class.activa]="seccion() === 'empleados'"
+        [disabled]="restauranteActivo() === null" (click)="navegarA('empleados')">
+        <span class="sidebar-numero">02</span><span>Gestión de empleados</span>
+      </button>
+      <button type="button" class="sidebar-opcion" [class.activa]="seccion() === 'estadisticas'"
+        [disabled]="restauranteActivo() === null" (click)="navegarA('estadisticas')">
+        <span class="sidebar-numero">03</span><span>Estadísticas</span>
       </button>
     </div>
-  </header>
+
+    <div class="sidebar-pie">
+      <div class="sidebar-perfil">
+        <span class="sidebar-avatar">P</span>
+        <div><strong>Propietario</strong><small>{{ restaurante()?.nombre || 'Gestión comercial' }}</small></div>
+      </div>
+      <button type="button" class="sidebar-salir" (click)="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  @if (menuMovilAbierto()) {
+    <button type="button" class="sidebar-fondo" aria-label="Cerrar menú lateral"
+      (click)="menuMovilAbierto.set(false)"></button>
+  }
+
+  <div class="propietario-principal">
+    <header class="propietario-barra">
+      <button type="button" class="sidebar-abrir-movil" aria-label="Abrir menú"
+        (click)="menuMovilAbierto.set(true)">☰</button>
+      <div class="barra-descripcion"><strong>Panel del propietario</strong><small>{{ restaurante()?.nombre || 'Plaza de Comidas' }}</small></div>
+      <span class="barra-rol"><span class="punto-estado"></span> Propietario</span>
+    </header>
 
   <main class="contenido">
-    <section class="bienvenida">
-      <span class="etiqueta">GESTIÓN COMERCIAL</span>
-      <h1>Panel del propietario</h1>
-      <p>
-        Administra el menú, registra empleados y consulta
-        el rendimiento de tus establecimientos.
-      </p>
+    <section class="bienvenida bienvenida-renovada">
+      <div>
+        <span class="etiqueta">CENTRO DE CONTROL · PROPIETARIO</span>
+        <h1>Administración de tu restaurante</h1>
+        <p>Gestiona tu menú, organiza tu equipo y consulta el rendimiento de tu establecimiento desde un solo lugar.</p>
+      </div>
+      @if (restauranteActivo() !== null) {
+        <span class="sesion-verificada"><span class="punto-estado"></span> Sesión verificada</span>
+      }
     </section>
 
-    <section class="panel selector-restaurante">
-      <div class="titulo-seccion">
-        <div>
-          <span class="sobre-titulo">01 · ESTABLECIMIENTO</span>
-          <h2>Seleccionar restaurante</h2>
-          <p>Introduce el ID de un restaurante de tu propiedad.</p>
+    <section class="identidad-restaurante" aria-label="Restaurante asignado">
+      @if (verificandoRestaurante()) {
+        <div class="identidad-cargando">Consultando la información de tu restaurante...</div>
+      } @else if (restaurante(); as actual) {
+        <div class="identidad-principal">
+          <div class="identidad-logo">
+            @if (actual.urlLogo) {
+              <img [src]="actual.urlLogo" [alt]="'Logo de ' + actual.nombre" loading="lazy" />
+            } @else {
+              <span>{{ actual.nombre.charAt(0).toUpperCase() }}</span>
+            }
+          </div>
+          <div class="identidad-datos">
+            <span class="sobre-titulo">TU ESTABLECIMIENTO</span>
+            <h2>{{ actual.nombre }}</h2>
+            <p>{{ actual.direccion }}</p>
+            <div class="identidad-metadatos">
+              <span>NIT {{ actual.nit }}</span>
+              <span>Restaurante #{{ actual.id }}</span>
+              <span>Tel. {{ actual.telefono }}</span>
+            </div>
+          </div>
         </div>
-
-        @if (restauranteActivo() !== null) {
-          <span class="etiqueta-verificado">
-            Restaurante #{{ restauranteActivo() }} verificado
-          </span>
-        }
-      </div>
-
-      <form class="restaurante-form" (ngSubmit)="verificarRestaurante()" novalidate>
-        <div class="campo">
-          <label for="restauranteId">
-            ID del restaurante <span class="required">*</span>
-          </label>
-          <input
-            id="restauranteId"
-            name="restauranteId"
-            type="text"
-            inputmode="numeric"
-            placeholder="Ej. 1"
-            [ngModel]="restauranteId()"
-            (ngModelChange)="cambiarRestauranteId($event)"
-            (blur)="restauranteTocado.set(true)"
-            [class.input-error]="restauranteTocado() && !!errorIdRestaurante()"
-            [disabled]="verificandoRestaurante() || guardandoEmpleado() || guardando()"
-          />
-          @if (restauranteTocado() && errorIdRestaurante()) {
-            <small class="field-error">{{ errorIdRestaurante() }}</small>
-          }
-        </div>
-
-        <button
-          type="submit"
-          class="btn-principal"
-          [disabled]="!!errorIdRestaurante() || verificandoRestaurante() || guardandoEmpleado() || guardando()"
-        >
-          {{ verificandoRestaurante() ? 'Verificando...' : 'Acceder al restaurante' }}
-        </button>
-      </form>
-
+        <span class="identidad-insignia"><span class="punto-estado"></span> Propiedad verificada</span>
+      }
       @if (errorRestaurante()) {
         <div class="alerta error" role="alert">{{ errorRestaurante() }}</div>
+        <button type="button" class="btn-secundario" (click)="verificarRestaurante()">Reintentar consulta</button>
       }
     </section>
 
     @if (restauranteActivo() !== null) {
-      <section class="resumen">
-        <div class="resumen-card">
-          <span>Restaurante seleccionado</span>
-          <strong>#{{ restauranteActivo() }}</strong>
-          <small>Propiedad verificada</small>
+      <section class="seccion-resumen" aria-label="Resumen comercial">
+        <div class="encabezado-bloque">
+          <div>
+            <span class="sobre-titulo">VISIÓN GENERAL</span>
+            <h2>Estado de tu negocio</h2>
+          </div>
+          <span class="detalle-resumen">Información disponible del restaurante</span>
         </div>
-        <div class="resumen-card">
-          <span>Platos disponibles</span>
-          <strong>{{ totalElementos() }}</strong>
-          <small>Según el microservicio</small>
-        </div>
-        <div class="resumen-card">
-          <span>Platos deshabilitados</span>
-          <strong>{{ platosDeshabilitados().length }}</strong>
-          <small>Referencias locales</small>
+        <div class="resumen resumen-renovado resumen-ejecutivo">
+          <button type="button" class="resumen-card resumen-accion resumen-disponibles" (click)="seleccionarSeccion('platos'); seleccionarApartado('disponibles')" aria-label="Ver platos disponibles">
+            <span class="resumen-cabecera"><span class="resumen-icono azul" aria-hidden="true">▤</span><span class="resumen-flecha" aria-hidden="true">↗</span></span>
+            <span class="resumen-titulo">Platos disponibles</span>
+            <strong class="resumen-valor">{{ totalElementos() }}</strong>
+            <small>Productos activos del menú</small>
+            <span class="resumen-pie">Ver catálogo <span aria-hidden="true">→</span></span>
+          </button>
+          <button type="button" class="resumen-card resumen-accion resumen-inactivos" (click)="seleccionarSeccion('platos'); seleccionarApartado('deshabilitados')" aria-label="Ver platos deshabilitados">
+            <span class="resumen-cabecera"><span class="resumen-icono naranja" aria-hidden="true">◷</span><span class="resumen-flecha" aria-hidden="true">↗</span></span>
+            <span class="resumen-titulo">Platos deshabilitados</span>
+            <strong class="resumen-valor">{{ platosDeshabilitados().length }}</strong>
+            <small>Referencias guardadas localmente</small>
+            <span class="resumen-pie">Gestionar recuperación <span aria-hidden="true">→</span></span>
+          </button>
+          <button type="button" class="resumen-card resumen-accion resumen-crear" (click)="seleccionarSeccion('platos'); seleccionarApartado('crear')" aria-label="Crear nuevo plato">
+            <span class="resumen-cabecera"><span class="resumen-icono verde" aria-hidden="true">＋</span><span class="resumen-flecha" aria-hidden="true">↗</span></span>
+            <span class="resumen-titulo">Gestión de productos</span>
+            <strong class="resumen-texto">Crear plato</strong>
+            <small>Publica una nueva opción en el menú</small>
+            <span class="resumen-pie">Nuevo producto <span aria-hidden="true">→</span></span>
+          </button>
+          <button type="button" class="resumen-card resumen-accion resumen-equipo" (click)="seleccionarSeccion('empleados')" aria-label="Registrar empleado">
+            <span class="resumen-cabecera"><span class="resumen-icono violeta" aria-hidden="true">♙</span><span class="resumen-flecha" aria-hidden="true">↗</span></span>
+            <span class="resumen-titulo">Equipo de trabajo</span>
+            <strong class="resumen-texto">Registrar empleado</strong>
+            <small>Vincula personal a tu restaurante</small>
+            <span class="resumen-pie">Ir al registro <span aria-hidden="true">→</span></span>
+          </button>
         </div>
       </section>
-
-      <nav class="pestanas" aria-label="Secciones del propietario">
-        <button
-          type="button"
-          [class.activa]="seccion() === 'platos'"
-          (click)="seleccionarSeccion('platos')"
-        >
-          01 · Gestión de platos
-        </button>
-
-        <button
-          type="button"
-          [class.activa]="seccion() === 'empleados'"
-          (click)="seleccionarSeccion('empleados')"
-        >
-          02 · Gestión de empleados
-        </button>
-
-        <button
-          type="button"
-          [class.activa]="seccion() === 'estadisticas'"
-          (click)="seleccionarSeccion('estadisticas')"
-        >
-          03 · Estadísticas
-        </button>
-      </nav>
 
       @if (mensajeExito()) {
         <div class="alerta exito" role="status">{{ mensajeExito() }}</div>
@@ -341,13 +346,14 @@
           }
 
           @if (apartado() === 'deshabilitados') {
-            <div class="nota-informativa">
-              <strong>Recuperación de platos</strong>
-              <p>
-                El backend no lista platos inactivos. Aquí aparecen
-                los registros guardados en este navegador y puedes
-                habilitar manualmente un plato por su ID.
-              </p>
+            <div class="recuperacion-introduccion">
+              <div class="recuperacion-introduccion-icono" aria-hidden="true">↺</div>
+              <div>
+                <span class="sobre-titulo">CONTROL DE DISPONIBILIDAD</span>
+                <h3>Recuperar productos del menú</h3>
+                <p>Consulta las referencias de platos deshabilitados en este navegador y solicita su reactivación.</p>
+              </div>
+              <span class="recuperacion-total">{{ platosDeshabilitados().length }} referencias locales</span>
             </div>
 
             @if (platosDeshabilitados().length) {
@@ -357,57 +363,50 @@
                     <div>
                       <span class="categoria">{{ plato.categoria }}</span>
                       <h3>{{ plato.nombre }}</h3>
-                      <p>ID: <strong>#{{ plato.id }}</strong></p>
-                      <p>
-                        Precio:
-                        {{ plato.precio | currency:'COP':'symbol':'1.0-0' }}
-                      </p>
+                      <p>Identificador <strong>#{{ plato.id }}</strong></p>
+                      <p>Precio {{ plato.precio | currency:'COP':'symbol':'1.0-0' }}</p>
                     </div>
-                    <button
-                      type="button"
-                      class="btn-principal"
+                    <button type="button" class="btn-principal"
                       [disabled]="procesandoId() !== null || operacionIndeterminada()"
-                      (click)="habilitarPorId(plato.id)"
-                    >
-                      Volver a habilitar
+                      (click)="habilitarPorId(plato.id)">
+                      {{ procesandoId() === plato.id ? 'Procesando...' : 'Volver a habilitar' }}
                     </button>
                   </article>
                 }
               </div>
             } @else {
-              <div class="estado-vacio">
-                No hay referencias locales de platos deshabilitados.
+              <div class="recuperacion-vacia" role="status">
+                <span class="recuperacion-vacia-icono" aria-hidden="true">✓</span>
+                <div>
+                  <h3>No hay referencias de platos deshabilitados</h3>
+                  <p>Este navegador no tiene productos pendientes de recuperación. Si conoces el ID de un plato inactivo, puedes solicitar su habilitación abajo.</p>
+                </div>
               </div>
             }
 
-            <form
-              class="formulario-recuperacion"
-              (ngSubmit)="recuperarIdManual()"
-              novalidate
-            >
-              <div class="campo">
-                <label for="idRecuperacion">Habilitar plato por ID</label>
-                <input
-                  id="idRecuperacion"
-                  name="idRecuperacion"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="Ej. 3"
-                  [ngModel]="idRecuperacion()"
-                  (ngModelChange)="idRecuperacion.set($event)"
-                />
-                <small class="field-help">
-                  Introduce únicamente IDs del restaurante seleccionado.
-                </small>
+            <section class="recuperacion-manual" aria-labelledby="tituloRecuperacionManual">
+              <div class="recuperacion-manual-encabezado">
+                <div>
+                  <span class="sobre-titulo">RECUPERACIÓN MANUAL</span>
+                  <h3 id="tituloRecuperacionManual">Habilitar un plato por ID</h3>
+                  <p>Utiliza esta opción cuando conozcas el identificador del producto.</p>
+                </div>
               </div>
-              <button
-                type="submit"
-                class="btn-principal"
-                [disabled]="procesandoId() !== null || operacionIndeterminada()"
-              >
-                Solicitar habilitación
-              </button>
-            </form>
+              <form class="formulario-recuperacion" (ngSubmit)="recuperarIdManual()" novalidate>
+                <div class="campo">
+                  <label for="idRecuperacion">Identificador del plato</label>
+                  <input id="idRecuperacion" name="idRecuperacion" type="text" inputmode="numeric"
+                    placeholder="Ej. 3" [ngModel]="idRecuperacion()"
+                    (ngModelChange)="idRecuperacion.set($event)" />
+                  <small class="field-help">Comprueba que el ID corresponda a tu restaurante.</small>
+                </div>
+                <button type="submit" class="btn-principal"
+                  [disabled]="procesandoId() !== null || operacionIndeterminada()">
+                  {{ procesandoId() !== null ? 'Procesando...' : 'Solicitar habilitación' }}
+                </button>
+              </form>
+              <p class="recuperacion-aviso">El backend no ofrece un listado general de platos inactivos. El número mostrado arriba corresponde únicamente a referencias guardadas en este navegador.</p>
+            </section>
           }
 
           @if (apartado() === 'crear') {
@@ -1029,4 +1028,5 @@
       </section>
     </div>
   }
+  </div>
 </div>

@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
   OnInit,
+  OnDestroy,
   computed,
   inject,
   signal
@@ -19,7 +20,8 @@ import {
 import { PlatoService, Plato } from '../../core/services/plato';
 import {
   PedidoService,
-  PedidoCreadoResponse
+  PedidoCreadoResponse,
+  Pedido
 } from '../../core/services/pedido';
 import { AuthService } from '../../core/auth/auth';
 import { obtenerMensajeHttp } from '../../core/utils/http-error';
@@ -38,13 +40,14 @@ interface ItemCarrito {
   templateUrl: './cliente.html',
   styleUrl: './cliente.scss'
 })
-export class Cliente implements OnInit {
+export class Cliente implements OnInit, OnDestroy {
   private readonly restaurantesApi = inject(RestauranteService);
   private readonly platosApi = inject(PlatoService);
   private readonly pedidosApi = inject(PedidoService);
   private readonly auth = inject(AuthService);
 
   readonly seccion = signal<SeccionCliente>('catalogo');
+  readonly sidebarAbierto = signal(false);
 
   readonly restaurantes = signal<RestauranteResumen[]>([]);
   readonly restaurante = signal<RestauranteResumen | null>(null);
@@ -78,6 +81,14 @@ export class Cliente implements OnInit {
   readonly totalPlatos = signal(0);
 
   readonly ultimoPedido = signal<PedidoCreadoResponse | null>(null);
+  readonly pedidoActivo = signal<Pedido | null>(null);
+  readonly cargandoPedidoActivo = signal(false);
+  readonly errorPedidoActivo = signal('');
+  private solicitudPedidoActivo = 0;
+  private actualizador: ReturnType<typeof setInterval> | null = null;
+  readonly sincronizando = signal(false);
+  readonly ultimaSincronizacion = signal<Date | null>(null);
+  readonly pedidoFinalizado = signal<Pedido | null>(null);
   readonly trazabilidad = signal<unknown>(null);
 
   // Presentación derivada del historial devuelto por el backend.
@@ -125,6 +136,47 @@ export class Cliente implements OnInit {
       }),
       cancelacion: [...eventos].reverse().find(e => e.estado === 'CANCELADO')?.fecha ?? null
     };
+  });
+
+  // El backend es la fuente de verdad: nunca se calculan platos ni precios ficticios.
+  readonly detallePedido = computed(() => {
+    const pedido = this.pedidoActivo();
+    if (!pedido) return [] as Array<{ id: number; nombre: string; cantidad: number; precio: number | null }>;
+    const raw = pedido as unknown as Record<string, unknown>;
+    const lista = [raw['platos'], raw['detalles'], raw['detallePlatos'], raw['items']]
+      .find(Array.isArray) as unknown[] | undefined;
+    if (!lista) return [];
+    return lista.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+      .map((x, index) => {
+        const anidado = x['plato'] && typeof x['plato'] === 'object'
+          ? x['plato'] as Record<string, unknown> : {};
+        const id = Number(x['platoId'] ?? x['idPlato'] ?? anidado['id'] ?? x['id'] ?? index);
+        const nombre = String(x['nombrePlato'] ?? x['platoNombre'] ?? x['nombre'] ?? anidado['nombre'] ?? `Plato #${id}`);
+        const cantidad = Number(x['cantidad'] ?? 0);
+        const valor = x['precioUnitario'] ?? x['precio'] ?? anidado['precio'];
+        const precio = valor == null || !Number.isFinite(Number(valor)) ? null : Number(valor);
+        return { id, nombre, cantidad, precio };
+      });
+  });
+
+  readonly totalDetalle = computed(() => {
+    const pedido = this.pedidoActivo();
+    if (!pedido) return null;
+    const raw = pedido as unknown as Record<string, unknown>;
+    const total = raw['total'] ?? raw['precioTotal'] ?? raw['valorTotal'];
+    if (total != null && Number.isFinite(Number(total))) return Number(total);
+    const detalles = this.detallePedido();
+    return detalles.length && detalles.every(x => x.precio !== null)
+      ? detalles.reduce((s, x) => s + x.cantidad * (x.precio ?? 0), 0) : null;
+  });
+
+  readonly nombreRestauranteActivo = computed(() => {
+    const pedido = this.pedidoActivo();
+    if (!pedido) return '';
+    const raw = pedido as unknown as Record<string, unknown>;
+    const nombre = raw['nombreRestaurante'] ?? raw['restauranteNombre'];
+    return typeof nombre === 'string' && nombre.trim()
+      ? nombre : this.restaurantes().find(r => r.id === pedido.restauranteId)?.nombre ?? `Restaurante #${pedido.restauranteId}`;
   });
 
   formatearFecha(fecha: string | null): string {
@@ -204,10 +256,78 @@ export class Cliente implements OnInit {
 
   ngOnInit(): void {
     this.cargarRestaurantes(0);
+    this.cargarPedidoActivo();
+    this.actualizador = setInterval(() => this.refrescarEnSegundoPlano(), 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.actualizador) clearInterval(this.actualizador);
+    ++this.solicitudPedidoActivo;
+    ++this.solicitudConsulta;
+  }
+
+  private refrescarEnSegundoPlano(): void {
+    if (this.enviando() || this.cancelando() || this.consultando() || this.cargandoPedidoActivo() || this.sincronizando()) return;
+    if (this.seccion() !== 'seguimiento' && !this.pedidoActivo()) return;
+    this.cargarPedidoActivo(true);
   }
 
   seleccionarSeccion(seccion: SeccionCliente): void {
     this.seccion.set(seccion);
+    this.sidebarAbierto.set(false);
+    if (seccion === 'seguimiento') this.cargarPedidoActivo();
+  }
+
+  cargarPedidoActivo(silencioso = false): void {
+    if (silencioso && (this.sincronizando() || this.cargandoPedidoActivo())) return;
+    const solicitud = ++this.solicitudPedidoActivo;
+    if (silencioso) this.sincronizando.set(true);
+    else this.cargandoPedidoActivo.set(true);
+    if (!silencioso) this.errorPedidoActivo.set('');
+    this.pedidosApi.obtenerMiPedidoActivo()
+      .pipe(finalize(() => {
+        if (solicitud === this.solicitudPedidoActivo) {
+          this.cargandoPedidoActivo.set(false);
+          this.sincronizando.set(false);
+        }
+      }))
+      .subscribe({
+        next: pedido => {
+          if (solicitud !== this.solicitudPedidoActivo) return;
+          const anterior = this.pedidoActivo();
+          this.ultimaSincronizacion.set(new Date());
+          this.errorPedidoActivo.set('');
+          this.pedidoActivo.set(pedido);
+          if (pedido?.id) {
+            this.pedidoFinalizado.set(null);
+            this.pedidoIdConsulta.set(String(pedido.id));
+            if (anterior?.id !== pedido.id) this.trazabilidad.set(null);
+            this.consultarPedido(silencioso);
+          } else {
+            if (anterior && (anterior.estado === 'LISTO' || anterior.estado === 'EN_PREPARACION')) {
+              // La consulta de pedido activo deja de devolver pedidos entregados.
+              // No se atribuye un estado final sin confirmarlo en trazabilidad.
+              this.pedidoFinalizado.set(anterior);
+              this.consultarPedido(true);
+            }
+            this.pedidoIdConsulta.set('');
+            if (!anterior) this.trazabilidad.set(null);
+            this.errorConsulta.set('');
+          }
+        },
+        error: error => {
+          if (solicitud !== this.solicitudPedidoActivo) return;
+          this.errorPedidoActivo.set(obtenerMensajeHttp(error));
+        }
+      });
+  }
+
+  alternarSidebar(): void {
+    this.sidebarAbierto.update(valor => !valor);
+  }
+
+  cerrarSidebar(): void {
+    this.sidebarAbierto.set(false);
   }
 
   cargarRestaurantes(pagina = 0): void {
@@ -600,6 +720,11 @@ export class Cliente implements OnInit {
       this.envioIndeterminado()
     ) return;
 
+    if (this.pedidoActivo()) {
+      this.errorPedido.set('Ya tienes un pedido activo. Espera a que finalice antes de crear otro.');
+      return;
+    }
+
     this.errorPedido.set('');
     this.exito.set('');
 
@@ -654,6 +779,8 @@ export class Cliente implements OnInit {
           next: pedido => {
             this.enviando.set(false);
             this.ultimoPedido.set(pedido);
+            this.seccion.set('seguimiento');
+            this.cargarPedidoActivo();
 
             this.pedidoIdConsulta.set(
               String(pedido.pedidoId)
@@ -676,6 +803,7 @@ export class Cliente implements OnInit {
               error.status >= 500
             ) {
               this.envioIndeterminado.set(true);
+              this.cargarPedidoActivo();
               this.errorPedido.set(
                 'No se pudo confirmar la creación. ' +
                 'El pedido podría existir. ' +
@@ -735,19 +863,16 @@ export class Cliente implements OnInit {
     );
 
     this.seccion.set('seguimiento');
-    this.consultarPedido();
+    this.cargarPedidoActivo();
   }
 
-  consultarPedido(): void {
-    this.consultaTocada.set(true);
-    this.errorConsulta.set('');
-    this.exitoConsulta.set('');
-    this.trazabilidad.set(null);
-
-    if (
-      this.errorIdPedido() ||
-      this.consultando()
-    ) return;
+  consultarPedido(silencioso = false): void {
+    if (this.errorIdPedido() || this.consultando()) return;
+    if (!silencioso) {
+      this.consultaTocada.set(true);
+      this.errorConsulta.set('');
+      this.exitoConsulta.set('');
+    }
 
     const solicitud = ++this.solicitudConsulta;
     const pedidoId = Number(
@@ -773,6 +898,7 @@ export class Cliente implements OnInit {
           ) return;
 
           this.trazabilidad.set(respuesta);
+          this.ultimaSincronizacion.set(new Date());
         },
         error: error => {
           if (
@@ -825,6 +951,7 @@ export class Cliente implements OnInit {
           );
 
           this.trazabilidad.set(null);
+          this.cargarPedidoActivo();
 
           if (
             this.ultimoPedido()?.pedidoId === id
@@ -863,7 +990,7 @@ export class Cliente implements OnInit {
   revisarCancelacion(): void {
     this.cancelacionIndeterminada.set(false);
     this.errorConsulta.set('');
-    this.consultarPedido();
+    this.cargarPedidoActivo();
   }
 
   cerrarSesion(): void {

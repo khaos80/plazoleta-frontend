@@ -1,16 +1,24 @@
 
 <div class="registro-page">
-  <section class="registro-card">
+
+  <main class="registro-card">
 
     <a routerLink="/login" class="volver">
-      ← Volver al inicio de sesión
+      <span aria-hidden="true">←</span>
+      Volver al inicio de sesión
     </a>
 
-    <div class="encabezado">
-      <span class="etiqueta">PLAZOLETA</span>
-      <h1>Crear cuenta</h1>
-      <p>Regístrate como cliente para realizar tus pedidos.</p>
-    </div>
+    <header class="registro-header">
+      <h1>Plaza de Comidas</h1>
+      <p>Sistema de gestión</p>
+    </header>
+
+    <section class="registro-heading">
+      <h2>Crear cuenta</h2>
+      <p>
+        Completa tus datos para registrarte como cliente.
+      </p>
+    </section>
 
     <form
       (ngSubmit)="registrar()"
@@ -18,13 +26,11 @@
       novalidate
     >
 
-      <div class="campos-dobles">
+      <div class="form-grid">
 
         <!-- Nombre -->
-        <div class="campo">
-          <label for="nombre">
-            Nombre <span class="required">*</span>
-          </label>
+        <div class="form-field">
+          <label for="nombre">Nombre</label>
 
           <input
             id="nombre"
@@ -33,12 +39,18 @@
             [(ngModel)]="datos.nombre"
             #nombreControl="ngModel"
             placeholder="Tu nombre"
+            autocomplete="given-name"
             required
-            [class.input-error]="nombreControl.invalid && (nombreControl.dirty || nombreControl.touched)"
-            [class.input-success]="nombreControl.valid && nombreControl.dirty"
+            [class.input-error]="
+              nombreControl.invalid &&
+              (nombreControl.dirty || nombreControl.touched)
+            "
           />
 
-          @if (nombreControl.invalid && (nombreControl.dirty || nombreControl.touched)) {
+          @if (
+            nombreControl.invalid &&
+            (nombreControl.dirty || nombreControl.touched)
+          ) {
             <small class="field-error">
               El nombre es obligatorio.
             </small>
@@ -46,10 +58,8 @@
         </div>
 
         <!-- Apellido -->
-        <div class="campo">
-          <label for="apellido">
-            Apellido <span class="required">*</span>
-          </label>
+        <div class="form-field">
+          <label for="apellido">Apellido</label>
 
           <input
             id="apellido"
@@ -58,167 +68,235 @@
             [(ngModel)]="datos.apellido"
             #apellidoControl="ngModel"
             placeholder="Tu apellido"
+            autocomplete="family-name"
             required
-            [class.input-error]="apellidoControl.invalid && (apellidoControl.dirty || apellidoControl.touched)"
-            [class.input-success]="apellidoControl.valid && apellidoControl.dirty"
+            [class.input-error]="
+              apellidoControl.invalid &&
+              (apellidoControl.dirty || apellidoControl.touched)
+            "
           />
 
-          @if (apellidoControl.invalid && (apellidoControl.dirty || apellidoControl.touched)) {
+          @if (
+            apellidoControl.invalid &&
+            (apellidoControl.dirty || apellidoControl.touched)
+          ) {
             <small class="field-error">
               El apellido es obligatorio.
             </small>
           }
         </div>
 
-      </div>
-
-      <!-- Documento -->
-      <div class="campo">
-        <label for="documento">
-          Documento de identidad <span class="required">*</span>
-        </label>
-
-        <input
-          id="documento"
-          name="documento"
-          type="text"
-          [(ngModel)]="datos.documentoDeIdentidad"
-          #documentoControl="ngModel"
-          placeholder="Número de documento"
-          required
-          pattern="[0-9]+"
-          [class.input-error]="documentoControl.invalid && (documentoControl.dirty || documentoControl.touched)"
-          [class.input-success]="documentoControl.valid && documentoControl.dirty"
-        />
-
-        @if (documentoControl.invalid && (documentoControl.dirty || documentoControl.touched)) {
-          <small class="field-error">
-            @if (documentoControl.errors?.['required']) {
-              El documento es obligatorio.
-            } @else {
-              El documento debe contener únicamente números.
-            }
-          </small>
-        }
-      </div>
-
-      <!-- Celular -->
-      <div class="campo">
-        <label for="celular">
-          Celular <span class="required">*</span>
-        </label>
-
-        <input
-          id="celular"
-          name="celular"
-          type="tel"
-          [(ngModel)]="datos.celular"
-          #celularControl="ngModel"
-          placeholder="Número de celular"
-          required
-          pattern="\+?[0-9]{7,15}"
-          [class.input-error]="celularControl.invalid && (celularControl.dirty || celularControl.touched)"
-          [class.input-success]="celularControl.valid && celularControl.dirty"
-        />
-
-        @if (celularControl.invalid && (celularControl.dirty || celularControl.touched)) {
-          <small class="field-error">
-            @if (celularControl.errors?.['required']) {
-              El celular es obligatorio.
-            } @else {
-              Ingresa un celular válido de 7 a 15 dígitos.
-            }
-          </small>
-        }
-      </div>
-
-      <!-- Correo -->
-      <div class="campo">
-        <label for="correo">
-          Correo electrónico <span class="required">*</span>
-        </label>
-
-        <input
-          id="correo"
-          name="correo"
-          type="email"
-          [(ngModel)]="datos.correo"
-          #correoControl="ngModel"
-          placeholder="correo@ejemplo.com"
-          required
-          email
-          [class.input-error]="correoControl.invalid && (correoControl.dirty || correoControl.touched)"
-          [class.input-success]="correoControl.valid && correoControl.dirty"
-        />
-
-        @if (correoControl.invalid && (correoControl.dirty || correoControl.touched)) {
-          <small class="field-error">
-            @if (correoControl.errors?.['required']) {
-              El correo electrónico es obligatorio.
-            } @else {
-              Ingresa un correo electrónico válido.
-            }
-          </small>
-        }
-      </div>
-
-      <div class="campos-dobles">
-
-        <!-- Contraseña -->
-        <div class="campo">
-          <label for="clave">
-            Contraseña <span class="required">*</span>
+        <!-- Documento -->
+        <div class="form-field">
+          <label for="documento">
+            Documento de identidad
           </label>
 
           <input
-            id="clave"
-            name="clave"
-            type="password"
-            [(ngModel)]="datos.clave"
-            #claveControl="ngModel"
-            placeholder="Contraseña"
-            autocomplete="new-password"
+            id="documento"
+            name="documento"
+            type="text"
+            inputmode="numeric"
+            [(ngModel)]="datos.documentoDeIdentidad"
+            #documentoControl="ngModel"
+            placeholder="Número de documento"
             required
-            minlength="8"
-            [class.input-error]="claveControl.invalid && (claveControl.dirty || claveControl.touched)"
-            [class.input-success]="claveControl.valid && claveControl.dirty"
+            pattern="[0-9]+"
+            [class.input-error]="
+              documentoControl.invalid &&
+              (documentoControl.dirty || documentoControl.touched)
+            "
           />
 
-          @if (claveControl.invalid && (claveControl.dirty || claveControl.touched)) {
+          @if (
+            documentoControl.invalid &&
+            (documentoControl.dirty || documentoControl.touched)
+          ) {
+            <small class="field-error">
+              @if (documentoControl.errors?.['required']) {
+                El documento es obligatorio.
+              } @else {
+                El documento debe contener únicamente números.
+              }
+            </small>
+          }
+        </div>
+
+        <!-- Celular -->
+        <div class="form-field">
+          <label for="celular">Celular</label>
+
+          <input
+            id="celular"
+            name="celular"
+            type="tel"
+            [(ngModel)]="datos.celular"
+            #celularControl="ngModel"
+            placeholder="Número de celular"
+            autocomplete="tel"
+            required
+            pattern="\+?[0-9]{7,15}"
+            [class.input-error]="
+              celularControl.invalid &&
+              (celularControl.dirty || celularControl.touched)
+            "
+          />
+
+          @if (
+            celularControl.invalid &&
+            (celularControl.dirty || celularControl.touched)
+          ) {
+            <small class="field-error">
+              @if (celularControl.errors?.['required']) {
+                El celular es obligatorio.
+              } @else {
+                Ingresa un celular válido de 7 a 15 dígitos.
+              }
+            </small>
+          }
+        </div>
+
+        <!-- Correo -->
+        <div class="form-field full-width">
+          <label for="correo">Correo electrónico</label>
+
+          <input
+            id="correo"
+            name="correo"
+            type="email"
+            [(ngModel)]="datos.correo"
+            #correoControl="ngModel"
+            placeholder="correo@ejemplo.com"
+            autocomplete="email"
+            required
+            email
+            [class.input-error]="
+              correoControl.invalid &&
+              (correoControl.dirty || correoControl.touched)
+            "
+          />
+
+          @if (
+            correoControl.invalid &&
+            (correoControl.dirty || correoControl.touched)
+          ) {
+            <small class="field-error">
+              @if (correoControl.errors?.['required']) {
+                El correo electrónico es obligatorio.
+              } @else {
+                Ingresa un correo electrónico válido.
+              }
+            </small>
+          }
+        </div>
+
+        <!-- Contraseña -->
+        <div class="form-field">
+          <label for="clave">Contraseña</label>
+
+          <div class="password-field">
+            <input
+              id="clave"
+              name="clave"
+              [type]="mostrarClave() ? 'text' : 'password'"
+              [(ngModel)]="datos.clave"
+              #claveControl="ngModel"
+              placeholder="Mínimo 8 caracteres"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              [class.input-error]="
+                claveControl.invalid &&
+                (claveControl.dirty || claveControl.touched)
+              "
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="alternarClave()"
+              [attr.aria-label]="
+                mostrarClave()
+                  ? 'Ocultar contraseña'
+                  : 'Mostrar contraseña'
+              "
+              [attr.aria-pressed]="mostrarClave()"
+            >
+              {{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}
+            </button>
+          </div>
+
+          @if (
+            claveControl.invalid &&
+            (claveControl.dirty || claveControl.touched)
+          ) {
             <small class="field-error">
               @if (claveControl.errors?.['required']) {
                 La contraseña es obligatoria.
               } @else {
-                La contraseña debe tener al menos 8 caracteres.
+                Debe tener al menos 8 caracteres.
               }
             </small>
           }
         </div>
 
         <!-- Confirmar contraseña -->
-        <div class="campo">
+        <div class="form-field">
           <label for="confirmar">
-            Confirmar contraseña <span class="required">*</span>
+            Confirmar contraseña
           </label>
 
-          <input
-            id="confirmar"
-            name="confirmar"
-            type="password"
-            [(ngModel)]="confirmarClave"
-            #confirmarControl="ngModel"
-            placeholder="Repite tu contraseña"
-            autocomplete="new-password"
-            required
-            [class.input-error]="(confirmarControl.invalid || confirmarClave !== datos.clave) && (confirmarControl.dirty || confirmarControl.touched)"
-            [class.input-success]="confirmarControl.valid && confirmarControl.dirty && confirmarClave === datos.clave"
-          />
+          <div class="password-field">
+            <input
+              id="confirmar"
+              name="confirmar"
+              [type]="
+                mostrarConfirmacion() ? 'text' : 'password'
+              "
+              [(ngModel)]="confirmarClave"
+              #confirmarControl="ngModel"
+              placeholder="Repite tu contraseña"
+              autocomplete="new-password"
+              required
+              [class.input-error]="
+                (confirmarControl.invalid ||
+                 confirmarClave !== datos.clave) &&
+                (confirmarControl.dirty ||
+                 confirmarControl.touched)
+              "
+            />
 
-          @if ((confirmarControl.dirty || confirmarControl.touched) && !confirmarClave) {
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="alternarConfirmacion()"
+              [attr.aria-label]="
+                mostrarConfirmacion()
+                  ? 'Ocultar confirmación'
+                  : 'Mostrar confirmación'
+              "
+              [attr.aria-pressed]="mostrarConfirmacion()"
+            >
+              {{
+                mostrarConfirmacion()
+                  ? 'Ocultar'
+                  : 'Mostrar'
+              }}
+            </button>
+          </div>
+
+          @if (
+            (confirmarControl.dirty ||
+             confirmarControl.touched) &&
+            !confirmarClave
+          ) {
             <small class="field-error">
               Confirma tu contraseña.
             </small>
-          } @else if (confirmarClave && confirmarClave !== datos.clave) {
+          } @else if (
+            confirmarClave &&
+            confirmarClave !== datos.clave
+          ) {
             <small class="field-error">
               Las contraseñas no coinciden.
             </small>
@@ -227,25 +305,45 @@
 
       </div>
 
+      <!-- Error de registro -->
       @if (error()) {
-        <div class="error" role="alert">
+        <div class="error-message" role="alert">
           {{ error() }}
         </div>
       }
 
+      <!-- Acción principal -->
       <button
+        class="submit-button"
         type="submit"
-        [disabled]="cargando() || registroForm.invalid || confirmarClave !== datos.clave"
+        [disabled]="
+          cargando() ||
+          registroForm.invalid ||
+          confirmarClave !== datos.clave
+        "
       >
-        {{ cargando() ? 'Creando cuenta...' : 'Crear cuenta' }}
+        @if (cargando()) {
+          <span
+            class="loading-spinner"
+            aria-hidden="true"
+          ></span>
+          Creando cuenta...
+        } @else {
+          Crear cuenta
+        }
       </button>
 
     </form>
 
-    <p class="pie">
-      ¿Ya tienes una cuenta?
+    <div class="login-link">
+      <span>¿Ya tienes una cuenta?</span>
       <a routerLink="/login">Inicia sesión</a>
-    </p>
+    </div>
 
-  </section>
+    <footer class="registro-footer">
+      Plaza de Comidas · Acceso seguro
+    </footer>
+
+  </main>
+
 </div>
