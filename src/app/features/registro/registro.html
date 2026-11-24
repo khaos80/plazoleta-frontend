@@ -121,7 +121,7 @@
             </small>
           }
         </div>
-
+        
         <!-- Celular -->
         <div class="form-field">
           <label for="celular">Celular</label>
@@ -132,10 +132,10 @@
             type="tel"
             [(ngModel)]="datos.celular"
             #celularControl="ngModel"
-            placeholder="Número de celular"
+            placeholder="Ej. 3001234567 o +573001234567"
             autocomplete="tel"
             required
-            pattern="\+?[0-9]{7,15}"
+            [pattern]="patronCelular"
             [class.input-error]="
               celularControl.invalid &&
               (celularControl.dirty || celularControl.touched)
@@ -150,11 +150,12 @@
               @if (celularControl.errors?.['required']) {
                 El celular es obligatorio.
               } @else {
-                Ingresa un celular válido de 7 a 15 dígitos.
+                {{ mensajeCelularInvalido }}
               }
             </small>
           }
         </div>
+
 
         <!-- Correo -->
         <div class="form-field full-width">

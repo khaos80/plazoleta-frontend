@@ -10,6 +10,12 @@ import {
   CrearClienteRequest
 } from '../../core/services/cliente';
 
+import {
+  PATRON_CELULAR_COLOMBIA,
+  esCelularColombianoValido,
+  MENSAJE_CELULAR_INVALIDO
+} from '../../core/utils/celular-colombia';
+
 @Component({
   selector: 'app-registro',
   standalone: true,
@@ -25,6 +31,9 @@ export class Registro {
   readonly error = signal('');
   readonly mostrarClave = signal(false);
   readonly mostrarConfirmacion = signal(false);
+
+  readonly patronCelular = PATRON_CELULAR_COLOMBIA;
+  readonly mensajeCelularInvalido = MENSAJE_CELULAR_INVALIDO;
 
   datos: CrearClienteRequest = {
     nombre: '',
@@ -57,7 +66,7 @@ export class Registro {
       apellido: this.datos.apellido.trim(),
       documentoDeIdentidad:
         this.datos.documentoDeIdentidad.trim(),
-      celular: this.datos.celular.trim(),
+      celular: this.datos.celular,
       correo: this.datos.correo.trim(),
       clave: this.datos.clave
     };
@@ -79,8 +88,8 @@ export class Registro {
       return;
     }
 
-    if (!/^\+?\d{7,15}$/.test(datos.celular)) {
-      this.error.set('Ingresa un número de celular válido.');
+    if (!esCelularColombianoValido(datos.celular)) {
+      this.error.set(MENSAJE_CELULAR_INVALIDO);
       return;
     }
 

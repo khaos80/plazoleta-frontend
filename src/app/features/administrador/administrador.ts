@@ -26,6 +26,11 @@ import {
   CrearRestauranteRequest
 } from '../../core/services/restaurante';
 
+import {
+  esCelularColombianoValido,
+  MENSAJE_CELULAR_INVALIDO
+} from '../../core/utils/celular-colombia';
+
 import { obtenerMensajeHttp } from '../../core/utils/http-error';
 
 type Seccion = 'propietarios' | 'restaurantes' | 'listado';
@@ -165,7 +170,8 @@ export class Administrador implements OnInit {
         campo: 'celular',
         etiqueta: 'Celular',
         tipo: 'tel',
-        placeholder: 'Ej. 3001234567'
+        placeholder: 'Ej. 3001234567 o +573001234567',
+        ayuda: 'Número colombiano de 10 dígitos, con o sin +57.'
       },
       {
         campo: 'fechaNacimiento',
@@ -458,7 +464,9 @@ export class Administrador implements OnInit {
 
   errorPropietario(campo: CampoPropietario): string {
     const datos = this.propietario();
-    const valor = datos[campo].trim();
+    const valor = campo === 'celular'
+      ? datos[campo]
+      : datos[campo].trim();
 
     if (!valor) {
       return 'Este campo es obligatorio.';
@@ -477,9 +485,9 @@ export class Administrador implements OnInit {
           : 'El documento debe tener entre 6 y 10 dígitos.';
 
       case 'celular':
-        return /^(?:\+57)?3\d{9}$/.test(valor)
+        return esCelularColombianoValido(valor)
           ? ''
-          : 'Ingresa un celular colombiano válido.';
+          : MENSAJE_CELULAR_INVALIDO;
 
       case 'fechaNacimiento':
         return this.esMayorDeEdad(valor)
@@ -564,7 +572,7 @@ export class Administrador implements OnInit {
       nombre: datos.nombre.trim(),
       apellido: datos.apellido.trim(),
       documentoIdentidad: datos.documentoIdentidad.trim(),
-      celular: datos.celular.trim(),
+      celular: datos.celular,
       fechaNacimiento: datos.fechaNacimiento,
       correo: datos.correo.trim(),
       contrasena: datos.contrasena

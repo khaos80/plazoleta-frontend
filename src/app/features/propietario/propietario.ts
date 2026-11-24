@@ -17,6 +17,11 @@ import {
 } from '../../core/services/empleado';
 import { obtenerMensajeHttp } from '../../core/utils/http-error';
 
+import {
+  esCelularColombianoValido,
+  MENSAJE_CELULAR_INVALIDO
+} from '../../core/utils/celular-colombia';
+
 type Seccion = 'platos' | 'empleados' | 'estadisticas';
 type Apartado = 'disponibles' | 'deshabilitados' | 'crear';
 type CampoPlato =
@@ -685,7 +690,9 @@ export class Propietario {
 
   errorCampoEmpleado(campo: CampoEmpleado): string {
     const datos = this.empleado();
-    const valor = datos[campo].trim();
+    const valor = campo === 'celular'
+      ? datos[campo]
+      : datos[campo].trim();
 
     if (!valor) return 'Este campo es obligatorio.';
 
@@ -702,8 +709,9 @@ export class Propietario {
           ? '' : 'Ingresa un documento de 6 a 10 dígitos.';
 
       case 'celular':
-        return /^\+?\d{10,13}$/.test(valor)
-          ? '' : 'Ingresa un celular de 10 a 13 dígitos.';
+        return esCelularColombianoValido(valor)
+          ? ''
+          : MENSAJE_CELULAR_INVALIDO;
 
       case 'correo':
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)
@@ -759,7 +767,7 @@ export class Propietario {
       nombre: datos.nombre.trim(),
       apellido: datos.apellido.trim(),
       documentoIdentidad: datos.documentoIdentidad.trim(),
-      celular: datos.celular.trim(),
+      celular: datos.celular,
       correo: datos.correo.trim().toLowerCase(),
       clave: datos.clave,
       idRol: 'EMPLEADO',

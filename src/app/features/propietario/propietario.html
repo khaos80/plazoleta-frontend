@@ -634,26 +634,30 @@
                   </small>
                 }
               </div>
+                <div class="campo">
+                  <label for="empCelular">
+                    Celular <span class="required">*</span>
+                  </label>
 
-              <div class="campo">
-                <label for="empCelular">
-                  Celular <span class="required">*</span>
-                </label>
-                <input
-                  id="empCelular"
-                  name="empCelular"
-                  type="tel"
-                  placeholder="Ej. 3001234567"
-                  [ngModel]="empleado().celular"
-                  (ngModelChange)="cambiarEmpleado('celular', $event)"
-                  (blur)="tocarEmpleado('celular')"
-                  [disabled]="guardandoEmpleado()"
-                  [class.input-error]="tocadosEmpleado()['celular'] && !!errorCampoEmpleado('celular')"
-                />
-                @if (tocadosEmpleado()['celular'] && errorCampoEmpleado('celular')) {
-                  <small class="field-error">{{ errorCampoEmpleado('celular') }}</small>
-                }
-              </div>
+                  <input
+                    id="empCelular"
+                    name="empCelular"
+                    type="tel"
+                    placeholder="Ej. 3001234567 o +573001234567"
+                    [ngModel]="empleado().celular"
+                    (ngModelChange)="cambiarEmpleado('celular', $event)"
+                    (blur)="tocarEmpleado('celular')"
+                    [disabled]="guardandoEmpleado()"
+                    [class.input-error]="tocadosEmpleado()['celular'] && !!errorCampoEmpleado('celular')"
+                  />
+
+                  @if (tocadosEmpleado()['celular'] && errorCampoEmpleado('celular')) {
+                    <small class="field-error">
+                      {{ errorCampoEmpleado('celular') }}
+                    </small>
+                  }
+                </div>
+
             </div>
 
             <div class="subtitulo-formulario separador-formulario">
