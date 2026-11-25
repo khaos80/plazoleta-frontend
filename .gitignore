@@ -41,3 +41,38 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+### Seguridad - Configuracion local ###
+.env
+.env.*
+!.env.example
+.plazoleta-secrets/
+.local-secrets/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+twilio.local.json
+entorno.local.json
+
+# Configuracion local del administrador
+administrador.local.json
+
+# Registro local de procesos
+procesos.local.json
+
+# Archivos locales y temporales
+*.local.json
+*.cnf
+*.tmp
+
+# Registros de ejecucion
+logs/
+*.log
+
+# Archivos de respaldo de bases de datos
+*.sql.gz
+*.dump
+*.bak

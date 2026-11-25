@@ -1,0 +1,13 @@
+USE plazoleta_usuarios;
+CREATE TABLE IF NOT EXISTS usuarios (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ nombre VARCHAR(100) NOT NULL,
+ apellido VARCHAR(100) NOT NULL,
+ documento_identidad VARCHAR(10) NOT NULL UNIQUE,
+ celular VARCHAR(13) NOT NULL,
+ fecha_nacimiento DATE,
+ correo VARCHAR(254) NOT NULL UNIQUE,
+ contrasena VARCHAR(255) NOT NULL,
+ rol ENUM('ADMINISTRADOR','PROPIETARIO','EMPLEADO','CLIENTE') NOT NULL,
+ restaurante_id BIGINT
+) ENGINE=InnoDB;

@@ -1,0 +1,12 @@
+USE plazoleta_platos;
+CREATE TABLE IF NOT EXISTS platos (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ nombre VARCHAR(255) NOT NULL,
+ precio INT NOT NULL,
+ descripcion VARCHAR(1000) NOT NULL,
+ url_imagen VARCHAR(255) NOT NULL,
+ categoria VARCHAR(255) NOT NULL,
+ restaurante_id BIGINT NOT NULL,
+ activo BIT(1) NOT NULL,
+ eliminado BIT(1) NOT NULL
+) ENGINE=InnoDB;

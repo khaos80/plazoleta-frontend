@@ -1,11 +1,276 @@
-
 # Plaza de Comidas — Sistema de Gestión de Pedidos
 
-Sistema de gestión de restaurantes, platos, usuarios y pedidos, desarrollado mediante una arquitectura de microservicios con Spring Boot y un frontend Angular.
+Sistema académico de gestión de restaurantes, usuarios, platos y pedidos, construido con cuatro microservicios Spring Boot y un frontend Angular. Incluye seguimiento de pedidos, indicadores operativos y entrega mediante PIN enviado por SMS con Twilio.
 
-El proyecto permite administrar restaurantes, gestionar su menú, registrar pedidos, controlar su preparación, realizar entregas mediante un PIN de seguridad y consultar la trazabilidad de cada pedido.
+Este repositorio es el punto de entrada para instalar, configurar, ejecutar y evaluar el sistema completo en Windows, sin Docker.
 
-## 1. Información general
+## Instalación rápida
+
+1. Instalar Git, JDK 21, Node.js 24, PowerShell 7.5 o superior y MySQL Server con su cliente `mysql.exe`.
+2. Disponer de acceso a los cinco repositorios y a una cuenta Twilio autorizada para el remitente configurado. MySQL Workbench es opcional y no sustituye al servidor.
+3. Abrir PowerShell 7 (`pwsh`) en una carpeta de trabajo y ejecutar:
+
+```powershell
+git clone https://github.com/khaos80/plazoleta-frontend.git
+cd plazoleta-frontend
+.\scripts\iniciar-proyecto.ps1
+```
+
+En el primer inicio, responder las solicitudes de configuración de Twilio, MySQL (si requiere aprovisionamiento) y administrador inicial. Las claves RSA y el token interno se generan automáticamente. Elegir **S** cuando se solicite crear un administrador en una base vacía; introducir datos y contraseña propios. No existen credenciales universales de demostración.
+
+Abrir [http://localhost:4200](http://localhost:4200). Para detener el sistema, desde la misma carpeta:
+
+```powershell
+.\scripts\detener-proyecto.ps1
+```
+
+> El arranque y la detención han sido validados en una instalación existente. La instalación integral desde un equipo limpio y el bootstrap de un administrador nuevo aún deben verificarse. Los scripts deben estar publicados en GitHub antes de utilizar este procedimiento desde un clon nuevo.
+
+## Índice
+
+- [Requisitos y repositorios](#1-requisitos-y-repositorios)
+- [Automatización y configuración](#2-automatización-y-configuración)
+- [Base de datos MySQL](#3-base-de-datos-mysql)
+- [Inicio y detención](#4-inicio-y-detención)
+- [Diagnóstico](#5-diagnóstico)
+- [Documentación técnica y funcional](#6-información-general)
+
+## 1. Requisitos y repositorios
+
+| Herramienta | Requisito del entorno automatizado |
+|---|---|
+| Sistema operativo | Windows |
+| PowerShell | 7.5 o superior (validado con 7.7.0) |
+| Java | JDK 21, con JAVA_HOME y PATH configurados |
+| Node.js | 24.x |
+| npm | Incluido con Node.js; disponible como npm.cmd |
+| Angular | 21, CLI local instalada mediante npm ci |
+| Maven | Maven Wrapper incluido en cada microservicio |
+| MySQL | Servidor local y cliente mysql.exe, puerto 3306 |
+| Git | Disponible en PATH |
+| Internet | Acceso a GitHub, dependencias Maven/npm y Twilio |
+
+Descargas oficiales: [Java](https://adoptium.net/), [Node.js](https://nodejs.org/), [PowerShell](https://github.com/PowerShell/PowerShell/releases), [MySQL](https://dev.mysql.com/downloads/), [Git](https://git-scm.com/downloads).
+
+Instalar PowerShell si no está disponible:
+
+```powershell
+winget install --id Microsoft.PowerShell --exact
+```
+
+Abrir una nueva terminal y comprobar:
+
+```powershell
+pwsh
+$PSVersionTable.PSVersion
+java -version
+$env:JAVA_HOME
+node --version
+npm --version
+git --version
+```
+
+| Repositorio | Puerto | Responsabilidad |
+|---|---:|---|
+| [plazoleta-frontend](https://github.com/khaos80/plazoleta-frontend) | 4200 | Interfaz y automatización |
+| [user-service](https://github.com/khaos80/user-service) | 8081 | Usuarios, autenticación y roles |
+| [restaurant-service](https://github.com/khaos80/restaurant-service) | 8082 | Restaurantes |
+| [dish-service](https://github.com/khaos80/dish-service) | 8083 | Platos |
+| [order-service](https://github.com/khaos80/order-service) | 8084 | Pedidos, SMS y trazabilidad |
+
+El script de clonación organiza los repositorios como carpetas hermanas y conserva los repositorios existentes sin sobrescribir sus cambios locales. Si son privados, el evaluador debe contar con permisos de acceso.
+
+```text
+PlazaDeComidas/
+├── user-service/
+├── restaurant-service/
+├── dish-service/
+├── order-service/
+└── plazoleta-frontend/
+    ├── database/
+    ├── scripts/
+    ├── src/
+    └── README.md
+```
+
+## 2. Automatización y configuración
+
+| Script en scripts/ | Función |
+|---|---|
+| clonar-microservicios.ps1 | Clona o verifica los cuatro repositorios |
+| configurar-entorno.ps1 | Genera y carga configuración local |
+| configurar-twilio.ps1 | Solicita y reutiliza credenciales SMS |
+| configurar-mysql.ps1 | Verifica o aprovisiona esquemas, tablas y usuario |
+| iniciar-proyecto.ps1 | Coordina instalación, compilación y arranque |
+| detener-proyecto.ps1 | Detiene procesos registrados y verifica puertos |
+
+### 2.1. Variables de entorno y claves RSA
+
+```powershell
+.\scripts\configurar-entorno.ps1
+```
+
+| Variable | Configuración |
+|---|---|
+| DB_USERNAME | plazoleta_app |
+| DB_PASSWORD | Contraseña aleatoria de 48 caracteres hexadecimales en una instalación nueva |
+| JWT_PRIVATE_KEY | RSA 2048, PKCS#8 en Base64 |
+| JWT_PUBLIC_KEY | Clave pública correspondiente, X.509 en Base64 |
+| INTERNAL_SERVICE_TOKEN | Token aleatorio de 64 caracteres hexadecimales |
+
+La configuración se conserva en `%LOCALAPPDATA%\Plazoleta\entorno.local.json`. Las variables se cargan en la sesión actual y se heredan por los procesos backend iniciados desde ella. No se crean variables globales permanentes de Windows. En una nueva sesión, volver a ejecutar el script o el iniciador general; se reutilizan los valores existentes.
+
+No eliminar este archivo sin planificar la recuperación de la contraseña MySQL y las claves JWT. La regeneración de claves invalida los tokens anteriores. El JSON contiene secretos en texto legible: mantenerlo fuera del repositorio y restringir su acceso al usuario local.
+
+### 2.2. Twilio
+
+```powershell
+.\scripts\configurar-twilio.ps1
+```
+
+La primera ejecución solicita Account SID y Auth Token. El remitente está predefinido en el script para la cuenta utilizada en el proyecto; debe pertenecer a la cuenta autorizada. Para utilizar otra cuenta con otro remitente, adaptar ese valor antes de reconfigurar.
+
+| Variable | Uso |
+|---|---|
+| TWILIO_ACCOUNT_SID | Identificador de cuenta |
+| TWILIO_AUTH_TOKEN | Credencial de autenticación |
+| TWILIO_FROM_NUMBER | Remitente autorizado en formato E.164 |
+| SMS_PROVEEDOR | twilio para envío real |
+
+El archivo `%LOCALAPPDATA%\Plazoleta\twilio.local.json` conserva la configuración y protege el Auth Token mediante DPAPI de Windows. No es portable a otro usuario o equipo. En otro PC se deben introducir las credenciales autorizadas una vez; no se publican en GitHub. Para sustituirlas:
+
+```powershell
+.\scripts\configurar-twilio.ps1 -Reconfigurar
+```
+
+Verificar saldo, permisos geográficos para Colombia y autorización del remitente. Los envíos reales pueden generar cargos. Los celulares colombianos admiten diez dígitos iniciando en 3 o el prefijo +57 seguido de esos diez dígitos, sin espacios. El backend normaliza el destino a E.164.
+
+Al pasar un pedido a LISTO, order-service genera el PIN y persiste el estado antes de solicitar el SMS. Si el proveedor falla, el pedido permanece LISTO y se registra el error; no asumir que el SMS llegó. La aceptación por Twilio no equivale a entrega al teléfono. El PIN correcto permite confirmar la entrega. Las pruebas utilizan el proveedor simulado y no generan SMS reales.
+
+### 2.3. Administrador inicial
+
+El iniciador solicita nombre, apellido, documento, celular, fecha de nacimiento (AAAA-MM-DD), correo y contraseña cuando se elige configurar un administrador. La contraseña debe tener al menos ocho caracteres y no superar 72 bytes UTF-8. Se conserva localmente en `administrador.local.json` con la contraseña protegida mediante DPAPI. El backend recibe los parámetros bootstrap mediante SPRING_APPLICATION_JSON y almacena la contraseña con BCrypt.
+
+Si ya existe un administrador, el backend no lo modifica. Reconfigurar los datos locales no cambia la contraseña de una cuenta existente. No omitir el bootstrap en una base vacía si se necesita iniciar sesión como administrador.
+
+## 3. Base de datos MySQL
+
+### 3.1. Preparar el servidor
+
+Instalar MySQL Server para Windows, configurar el servicio, puerto TCP 3306 y una contraseña administrativa propia. Instalar también el cliente de línea de comandos. Workbench puede utilizarse para inspeccionar los esquemas, pero no es obligatorio.
+
+```powershell
+Get-Service | Where-Object { $_.Name -like '*mysql*' }
+Test-NetConnection localhost -Port 3306
+.\scripts\configurar-mysql.ps1
+```
+
+El script localiza mysql.exe y el servicio MySQL, inicia el servicio si es necesario (puede requerir permisos de Windows) y comprueba la conexión. Si la cuenta de aplicación y las siete tablas ya están disponibles, reutiliza la instalación sin solicitar contraseña administrativa. Si faltan recursos o permisos, se necesita una cuenta administrativa autorizada para crearlos. No se puede deducir ni evitar una contraseña root desconocida: solicitar apoyo al administrador del equipo. No restablecer root ni modificar instalaciones ajenas.
+
+Si hay varias instalaciones MySQL, indicar la ruta y el nombre del servicio correctos:
+
+```powershell
+.\scripts\configurar-mysql.ps1 -MySqlExe 'C:\ruta\mysql.exe' -Servicio 'NombreDelServicio'
+```
+
+### 3.2. Esquemas y tablas
+
+| Esquema | Tablas |
+|---|---|
+| plazoleta_usuarios | usuarios |
+| plazoleta_restaurantes | restaurantes |
+| plazoleta_platos | platos |
+| plazoleta_pedidos | pedidos, detalles_pedido, pedido_estado_historial, bloqueos_cliente |
+
+Los scripts SQL incluidos se ejecutan en este orden:
+
+| Archivo en database/ | Operación |
+|---|---|
+| 01-crear-bases-datos.sql | Crea los cuatro esquemas utf8mb4 |
+| 02-crear-tabla-usuarios.sql | Crea usuarios, roles y restricciones únicas |
+| 03-crear-tabla-restaurantes.sql | Crea restaurantes y restricciones de NIT y propietario |
+| 04-crear-tabla-platos.sql | Crea platos, disponibilidad y referencia al restaurante |
+| 05-crear-tablas-pedidos.sql | Crea pedidos, detalles, historial y bloqueos |
+
+Las sentencias usan CREATE DATABASE/TABLE IF NOT EXISTS e InnoDB. No contienen DROP ni eliminación de registros. No constituyen una migración de esquemas incompatibles. La relación física de detalles_pedido.pedido_id referencia pedidos.id; las referencias entre dominios se validan mediante los servicios correspondientes.
+
+El usuario `plazoleta_app` recibe permisos limitados a los cuatro esquemas: SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX y REFERENCES. No se necesita ejecutar los microservicios como root. Si el usuario ya existe con otra contraseña, conservarla y ajustar de forma local DB_PASSWORD en entorno.local.json con la credencial autorizada; no cambiarla automáticamente. En caso de discrepancia, detener la instalación y revisar la configuración.
+
+### 3.3. Inspección opcional en Workbench
+
+Conectar a localhost:3306 con una cuenta autorizada y ejecutar:
+
+```sql
+SHOW DATABASES;
+SHOW TABLES FROM plazoleta_usuarios;
+SHOW TABLES FROM plazoleta_restaurantes;
+SHOW TABLES FROM plazoleta_platos;
+SHOW TABLES FROM plazoleta_pedidos;
+```
+
+No es necesario ejecutar manualmente los cinco archivos SQL si el script termina correctamente. Cada servicio utiliza su esquema propio mediante JDBC y las variables DB_USERNAME y DB_PASSWORD. La configuración Hibernate de actualización de esquema puede realizar cambios adicionales al arrancar; conservar copias de seguridad de datos importantes.
+
+## 4. Inicio y detención
+
+Desde plazoleta-frontend, en PowerShell 7:
+
+```powershell
+.\scripts\iniciar-proyecto.ps1
+```
+
+El iniciador verifica requisitos y puertos, clona o verifica repositorios, carga entorno y Twilio, configura MySQL, prepara el administrador, compila los cuatro JAR, instala dependencias Angular si faltan, inicia los servicios en orden y verifica el frontend mediante HTTP 200. Angular escucha en 127.0.0.1 y se accede mediante http://localhost:4200 para conservar el origen CORS previsto.
+
+| Opción | Comportamiento |
+|---|---|
+| -EjecutarPruebas | Compila ejecutando las pruebas Maven |
+| -OmitirCompilacion | Reutiliza JAR existentes; no usar en un clon nuevo ni después de cambiar código Java |
+| -NoAbrirNavegador | No abre el navegador automáticamente |
+| -ReconfigurarAdministrador | Solicita nuevos datos de bootstrap local |
+| -OmitirAdministrador | Deshabilita el bootstrap; conserva las cuentas existentes |
+
+```powershell
+# Validación con pruebas
+.\scripts\iniciar-proyecto.ps1 -EjecutarPruebas
+# Reinicio rápido en una instalación existente
+.\scripts\iniciar-proyecto.ps1 -OmitirCompilacion -OmitirAdministrador
+# Detener antes de volver a iniciar
+.\scripts\detener-proyecto.ps1
+```
+
+No combinar EjecutarPruebas con OmitirCompilacion ni ReconfigurarAdministrador con OmitirAdministrador. Los servicios se ejecutan mediante java -jar con memoria inicial de 64 MB y máxima de 256 MB por JVM. Los procesos se registran en `%LOCALAPPDATA%\Plazoleta\procesos.local.json`. Ante un fallo de arranque se intenta detener los procesos iniciados por el script.
+
+El script de detención comprueba PID, fecha de inicio y ejecutable antes de terminar los procesos en orden inverso. Utiliza detención forzada del árbol de procesos: finalizar las operaciones en curso antes de ejecutarlo. MySQL permanece activo y se conservan datos y configuraciones.
+
+## 5. Diagnóstico
+
+Los logs se encuentran en `%LOCALAPPDATA%\Plazoleta\logs`, con archivos de salida y error para cada servicio y para el frontend.
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\Plazoleta\logs\frontend.log" -Tail 100
+Get-Content "$env:LOCALAPPDATA\Plazoleta\logs\frontend-error.log" -Tail 100
+Get-Content "$env:LOCALAPPDATA\Plazoleta\logs\order-service.log" -Tail 100
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.LocalPort -in @(3306,8081,8082,8083,8084,4200) } |
+    Select-Object LocalPort, OwningProcess
+```
+
+| Incidencia | Acción |
+|---|---|
+| pwsh no reconocido | Instalar PowerShell 7.5+ y abrir otra terminal |
+| Java incorrecto | Revisar JDK 21, JAVA_HOME y PATH |
+| Puerto ocupado | Identificar el proceso; no finalizar procesos ajenos |
+| MySQL no responde | Revisar servicio, puerto y cliente mysql.exe |
+| Credenciales MySQL incompatibles | Verificar contraseña autorizada y configuración local |
+| Angular no inicia | Revisar logs, Node 24 y dependencias locales |
+| SMS no recibido | Revisar logs de order-service, cuenta Twilio, remitente, saldo y permisos |
+| 401 / 403 | Revisar autenticación, expiración JWT y permisos |
+| No existe administrador | Ejecutar bootstrap personalizado en una base sin administrador |
+
+Después de detener el proyecto, los puertos 8081–8084 y 4200 deben quedar libres; MySQL debe permanecer en 3306.
+
+
+
+## 6. Información general
 
 | Característica | Tecnología |
 |---|---|
@@ -32,33 +297,21 @@ El sistema contempla el proceso desde la creación de un restaurante hasta la en
 
 ---
 
-## 2. Arquitectura del sistema
+## 7. Arquitectura del sistema
 
 La solución utiliza una arquitectura distribuida compuesta por cuatro microservicios independientes y una aplicación frontend.
 
-```text
-                  USUARIOS
-                     |
-                     v
-              FRONTEND ANGULAR
-               localhost:4200
-                     |
-                     | HTTP / REST / JWT
-                     |
-       +-------------+-------------+
-       |             |             |
-       v             v             v
-  USER-SERVICE  RESTAURANT-SERVICE  DISH-SERVICE
-    :8081            :8082            :8083
-       |             |             |
-       +-------------+-------------+
-                     |
-                     v
-                ORDER-SERVICE
-                    :8084
-                     |
-                     v
-                   MySQL
+```mermaid
+flowchart TD
+    F[Angular :4200] --> U[user-service :8081]
+    F --> R[restaurant-service :8082]
+    F --> D[dish-service :8083]
+    F --> O[order-service :8084]
+    U --> DB1[(plazoleta_usuarios)]
+    R --> DB2[(plazoleta_restaurantes)]
+    D --> DB3[(plazoleta_platos)]
+    O --> DB4[(plazoleta_pedidos)]
+    O --> T[Twilio SMS]
 ```
 
 Este diagrama representa una vista conceptual. Las llamadas reales se realizan desde el frontend hacia las API correspondientes y entre microservicios cuando una operación requiere validar información de otro dominio.
@@ -95,7 +348,7 @@ Cada microservicio:
 
 ---
 
-## 3. Arquitectura hexagonal
+## 8. Arquitectura hexagonal
 
 Los microservicios se desarrollaron siguiendo el patrón de arquitectura hexagonal, también conocido como Ports and Adapters.
 
@@ -174,7 +427,7 @@ Los mensajes de error utilizados por los casos de uso se referencian mediante co
 
 ---
 
-## 4. Roles del sistema
+## 9. Roles del sistema
 
 La aplicación contempla cuatro roles.
 
@@ -233,7 +486,7 @@ Permite:
 
 ---
 
-## 5. Funcionalidades principales
+## 10. Funcionalidades principales
 
 ### 5.1. Gestión de usuarios
 
@@ -305,7 +558,7 @@ La trazabilidad permite identificar el avance del pedido y consultar la informac
 
 ---
 
-## 6. Ciclo de vida de un pedido
+## 11. Ciclo de vida de un pedido
 
 Los estados del pedido son:
 
@@ -358,7 +611,7 @@ La posibilidad de cancelar depende de las reglas de negocio implementadas.
 
 ---
 
-## 7. Frontend Angular
+## 12. Frontend Angular
 
 El frontend es una aplicación Angular desarrollada con TypeScript y componentes standalone.
 
@@ -399,13 +652,13 @@ Permite explorar restaurantes, consultar platos, crear pedidos y realizar seguim
 
 ### Seguimiento del cliente
 
-El apartado de seguimiento permite consultar la información de un pedido mediante su identificador y utilizar las opciones disponibles para consultar pedidos de la sesión.
+El apartado Mi pedido activo consulta GET /api/v1/pedidos/mi-pedido-activo, muestra los platos solicitados y actualiza el seguimiento cada cinco segundos. Si no existe pedido activo, el servicio devuelve HTTP 204.
 
 La información de trazabilidad se representa visualmente para facilitar la comprensión de los estados.
 
 ---
 
-## 8. Seguridad
+## 13. Seguridad
 
 La aplicación utiliza Spring Security y JSON Web Tokens (JWT).
 
@@ -446,307 +699,11 @@ Authorization: Bearer <TOKEN_JWT>
 - Evitar que un usuario acceda a recursos que no le corresponden.
 - Utilizar respuestas HTTP apropiadas para accesos denegados.
 
----
-
-## 9. Base de datos
-
-El proyecto utiliza MySQL como motor de base de datos relacional.
-
-La persistencia de los microservicios se realiza mediante las tecnologías configuradas en cada proyecto.
-
-### Configuración
-
-Cada servicio debe contar con su configuración de conexión a la base de datos.
-
-Ejemplo de configuración orientativa:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/NOMBRE_BASE_DATOS
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-```
-
-`NOMBRE_BASE_DATOS` debe reemplazarse por el esquema real configurado en cada microservicio.
-
-Los nombres de los esquemas, las tablas y las relaciones deben consultarse en las entidades y archivos de configuración de los servicios.
-
-### Requisitos
-
-- MySQL instalado y en ejecución.
-- Bases de datos requeridas por los servicios.
-- Usuario de MySQL con permisos suficientes.
-- Configuración de conexión válida.
-- Puerto de MySQL disponible, normalmente 3306.
-
-No debe asumirse que todos los servicios comparten un mismo esquema de base de datos.
+Las claves RSA se generan por instalación. El token interno protege la consulta del teléfono del cliente mediante X-Internal-Service-Token. No enviar estos secretos al navegador ni publicarlos en Git. Esta documentación no constituye una auditoría de seguridad completa.
 
 ---
 
-## 10. Requisitos para ejecutar el proyecto
-
-Se recomienda disponer de:
-
-| Herramienta | Requisito |
-|---|---|
-| Java | JDK 21 |
-| Maven | Maven Wrapper del proyecto o Maven compatible |
-| MySQL | Servidor compatible con la configuración |
-| Node.js | Versión compatible con Angular 21 |
-| npm | Versión compatible con Node.js y el proyecto |
-| Git | Instalación funcional |
-| IDE | Visual Studio Code o equivalente |
-
-### Verificar Java
-
-```powershell
-java -version
-```
-
-Debe utilizarse Java 21.
-
-### Verificar Node.js
-
-```powershell
-node -v
-```
-
-### Verificar npm
-
-```powershell
-npm -v
-```
-
-### Verificar Git
-
-```powershell
-git --version
-```
-
-Para compilar con Maven Wrapper no es obligatorio instalar Maven globalmente, siempre que el wrapper del proyecto esté completo y pueda descargar su distribución.
-
----
-
-## 11. Descargar el proyecto
-
-Los microservicios se mantienen en repositorios independientes.
-
-Se recomienda organizar los proyectos de la siguiente forma:
-
-```text
-PlazaDeComidas/
-├── user-service/
-├── restaurant-service/
-├── dish-service/
-├── order-service/
-└── plazoleta-frontend/
-```
-
-Esta estructura es una organización local recomendada; no obliga a modificar la estructura interna de cada repositorio.
-
-### Clonar el frontend
-
-```powershell
-git clone https://github.com/khaos80/plazoleta-frontend.git
-```
-
-### Microservicios
-
-Clonar cada microservicio utilizando la URL de su repositorio correspondiente.
-
-```powershell
-git clone <URL_USER_SERVICE>
-git clone <URL_RESTAURANT_SERVICE>
-git clone <URL_DISH_SERVICE>
-git clone <URL_ORDER_SERVICE>
-```
-
-Las URL deben sustituirse por los repositorios reales del proyecto.
-
----
-
-## 12. Configurar el backend
-
-Antes de ejecutar los microservicios:
-
-1. Iniciar MySQL.
-2. Crear o verificar los esquemas requeridos.
-3. Configurar las credenciales de base de datos.
-4. Verificar las claves y parámetros de seguridad JWT.
-5. Revisar las direcciones de comunicación entre microservicios.
-6. Verificar los puertos.
-7. Comprobar que Java 21 esté disponible.
-
-Los valores efectivos se encuentran en los archivos `application.properties` o `application.yml` de cada servicio.
-
-### Puertos del entorno local
-
-| Aplicación | Puerto |
-|---|---|
-| user-service | 8081 |
-| restaurant-service | 8082 |
-| dish-service | 8083 |
-| order-service | 8084 |
-| Angular | 4200 |
-
-Estos son los puertos utilizados en el entorno de desarrollo documentado. Deben coincidir con los valores efectivos de configuración.
-
----
-
-## 13. Compilar los microservicios
-
-Cada microservicio se compila de manera independiente.
-
-Los siguientes comandos están orientados a Windows PowerShell.
-
-### 13.1. user-service
-
-Abrir una terminal dentro de `user-service`.
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-### 13.2. restaurant-service
-
-Abrir una terminal dentro de `restaurant-service`.
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-### 13.3. dish-service
-
-Abrir una terminal dentro de `dish-service`.
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-### 13.4. order-service
-
-Abrir una terminal dentro de `order-service`.
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-La opción `-DskipTests` permite compilar sin ejecutar las pruebas. Para una validación completa de entrega se recomienda ejecutar las pruebas por separado.
-
-### Verificar los archivos generados
-
-Desde la raíz de cada microservicio:
-
-```powershell
-Get-ChildItem .\target\*.jar
-```
-
-Se debe identificar el JAR ejecutable de Spring Boot, evitando archivos auxiliares que no correspondan a la aplicación.
-
----
-
-## 14. Ejecutar los microservicios mediante JAR
-
-**Importante: el procedimiento de ejecución de este proyecto utiliza archivos JAR compilados.**
-
-No es necesario utilizar `spring-boot:run` para iniciar los servicios.
-
-Cada microservicio debe ejecutarse en una terminal independiente.
-
-### 14.1. Iniciar user-service
-
-Desde su carpeta raíz:
-
-```powershell
-# user-service
-java -Xms64m -Xmx256m -jar .\target\user-service-0.0.1-SNAPSHOT.jar
-```
-
-### 14.2. Iniciar restaurant-service
-
-```powershell
-# restaurant-service
-java -Xms64m -Xmx256m -jar .\target\restaurant-service-0.0.1-SNAPSHOT.jar
-```
-
-### 14.3. Iniciar dish-service
-
-```powershell
-java -Xms64m -Xmx256m -jar .\target\dish-service-0.0.1-SNAPSHOT.jar
-```
-
-### 14.4. Iniciar order-service
-
-```powershell
-# order-service
-java -Xms64m -Xmx256m -jar .\target\order-service-0.0.1-SNAPSHOT.jar
-```
-
-Reemplazar cada nombre por el archivo JAR real generado en la carpeta `target`.
-
-Los parámetros `-Xms64m` y `-Xmx256m` son una configuración de memoria para un entorno local de recursos limitados. Pueden ajustarse según los requisitos de ejecución.
-
-### Orden recomendado
-
-1. MySQL.
-2. user-service.
-3. restaurant-service.
-4. dish-service.
-5. order-service.
-6. Frontend Angular.
-
-Este orden facilita comprobar las dependencias funcionales entre servicios.
-
-### Verificación
-
-Cada aplicación debe mostrar en consola que Spring Boot inició correctamente y que el servidor HTTP está escuchando en el puerto configurado.
-
-No cerrar las terminales mientras se utiliza el sistema.
-
----
-
-## 15. Ejecutar el frontend Angular
-
-Abrir una terminal en la carpeta `plazoleta-frontend`.
-
-### Instalar dependencias
-
-```powershell
-npm install
-```
-
-### Iniciar Angular
-
-```powershell
-npx ng serve
-```
-
-### Abrir la aplicación
-
-```text
-http://localhost:4200
-```
-
-### Compilar el frontend
-
-Para generar una compilación de producción:
-
-```powershell
-npx ng build --configuration production
-```
-
-El resultado se genera en el directorio de salida configurado por Angular, normalmente dentro de `dist/`.
-
-### Conexión con el backend
-
-Las URL utilizadas por el frontend deben corresponder a los puertos de los microservicios.
-
-El frontend necesita que los servicios requeridos estén disponibles para ejecutar sus operaciones.
-
-La configuración CORS del backend debe permitir el origen del frontend en el entorno local.
-
----
-
-## 16. Documentación de API con Swagger
+## 14. Documentación de API con Swagger
 
 Los microservicios utilizan Swagger/OpenAPI para facilitar la exploración y prueba de endpoints.
 
@@ -788,7 +745,7 @@ La respuesta concreta depende de los controladores y manejadores de excepciones 
 
 ---
 
-## 17. Comunicación entre microservicios
+## 15. Comunicación entre microservicios
 
 La solución utiliza comunicación HTTP/REST para operaciones que requieren consultar información de otros servicios.
 
@@ -834,7 +791,7 @@ Para consultar el catálogo completo de endpoints de todos los servicios, utiliz
 
 ---
 
-## 18. Trazabilidad de pedidos
+## 16. Trazabilidad de pedidos
 
 La trazabilidad permite conocer la evolución del pedido a través de sus estados.
 
@@ -878,7 +835,7 @@ La información presentada debe provenir de las respuestas reales de `order-serv
 
 ---
 
-## 19. Pruebas
+## 17. Pruebas
 
 El proyecto contempla pruebas organizadas según la responsabilidad del componente.
 
@@ -931,9 +888,23 @@ Desde la raíz de cada microservicio:
 - Las pruebas de integración pueden requerir configuración adicional.
 - Una compilación con `-DskipTests` no demuestra que las pruebas hayan pasado.
 
+### Aislamiento y resultados previos
+
+Los perfiles de prueba utilizan H2 en lugar de MySQL y order-service utiliza SMS simulado. Los resultados previamente confirmados fueron:
+
+| Servicio | Pruebas superadas |
+|---|---:|
+| user-service | 137 |
+| restaurant-service | 176 |
+| dish-service | 114 |
+| order-service | 266 |
+| **Total** | **693** |
+
+Estos resultados corresponden a ejecuciones anteriores, no a una nueva ejecución realizada al redactar este documento. Validar nuevamente con `-EjecutarPruebas` o Maven Wrapper. H2 no sustituye una prueba funcional contra MySQL.
+
 ---
 
-## 20. Validación funcional del sistema
+## 18. Validación funcional del sistema
 
 Para comprobar el funcionamiento completo, se recomienda realizar el siguiente recorrido.
 
@@ -996,9 +967,11 @@ Comprobar el rechazo de operaciones inválidas, como:
 - Intentar cancelar un pedido fuera de las condiciones autorizadas.
 - Confirmar una entrega con información de seguridad inválida.
 
+Comprobar además la recepción real del SMS, el rechazo de un PIN incorrecto, la entrega con el PIN correcto y los indicadores de tiempos y empleados en el panel del propietario.
+
 ---
 
-## 21. Manejo de errores
+## 19. Manejo de errores
 
 Los casos de uso utilizan constantes centralizadas en `MensajesError`.
 
@@ -1018,91 +991,7 @@ El frontend debe interpretar las respuestas de error y presentar mensajes compre
 
 ---
 
-## 22. Solución de problemas frecuentes
-
-### Java no se reconoce
-
-Verificar que JDK 21 esté instalado y configurado en `JAVA_HOME` y `PATH`.
-
-```powershell
-java -version
-```
-
-### Maven no se reconoce
-
-Utilizar Maven Wrapper desde la carpeta del microservicio:
-
-```powershell
-.\mvnw.cmd clean package
-```
-
-Si el wrapper no está disponible, instalar y configurar una versión compatible de Maven.
-
-### Error de conexión a MySQL
-
-Comprobar:
-
-- Que MySQL esté ejecutándose.
-- Que el puerto configurado sea correcto.
-- Que el esquema exista.
-- Que el usuario y contraseña sean válidos.
-- Que la configuración JDBC corresponda al entorno.
-
-### Puerto ocupado
-
-En Windows, identificar el proceso:
-
-```powershell
-netstat -ano | findstr :8084
-```
-
-Consultar el PID antes de finalizar cualquier proceso.
-
-### El frontend no se conecta al backend
-
-Comprobar:
-
-- Que el microservicio esté iniciado.
-- Que la URL y el puerto sean correctos.
-- Que CORS esté configurado.
-- Que el token JWT sea válido.
-- Que el usuario tenga permisos.
-- Que no existan errores de red en las herramientas de desarrollo del navegador.
-
-### Error 401
-
-La solicitud no dispone de autenticación válida.
-
-Revisar el token JWT y el encabezado `Authorization`.
-
-### Error 403
-
-El usuario está autenticado, pero no tiene los permisos necesarios para ejecutar la operación.
-
-### No aparecen pedidos pendientes
-
-Verificar:
-
-- Que el pedido exista.
-- Que su estado sea PENDIENTE.
-- Que el empleado tenga acceso al restaurante correspondiente.
-- Que el frontend consulte el endpoint correcto.
-- Que el backend devuelva los pedidos esperados.
-- Que no existan errores de autenticación o autorización.
-
-### La trazabilidad no muestra información
-
-Verificar:
-
-- El identificador del pedido.
-- La respuesta del servicio de pedidos.
-- Los registros de trazabilidad existentes.
-- El procesamiento de la respuesta en Angular.
-- La consola del navegador.
-
----
-
-## 23. Buenas prácticas aplicadas
+## 20. Buenas prácticas aplicadas
 
 El proyecto incorpora principios y prácticas orientados a mantener una solución organizada y escalable:
 
@@ -1123,7 +1012,7 @@ El proyecto incorpora principios y prácticas orientados a mantener una solució
 
 ---
 
-## 24. Alcance y consideraciones
+## 21. Alcance y consideraciones
 
 El sistema está orientado a la gestión de operaciones de restaurantes y pedidos dentro de una plaza de comidas.
 
@@ -1139,7 +1028,7 @@ El reto original no exige implementar:
 - Gestión contable.
 - Aplicaciones móviles nativas.
 
-Las integraciones externas, como notificaciones mediante servicios de mensajería, deben evaluarse según la implementación y configuración efectiva de los microservicios.
+La integración de mensajería SMS mediante Twilio está implementada y fue validada con envíos reales en el entorno existente.
 
 ### Entorno de ejecución
 
@@ -1149,63 +1038,7 @@ La puesta en producción requiere medidas adicionales de seguridad, gestión de 
 
 ---
 
-## 25. Repositorios del proyecto
-
-### Frontend
-
-https://github.com/khaos80/plazoleta-frontend
-
-### Backend
-
-El backend se divide en los siguientes repositorios independientes:
-
-| Microservicio | Responsabilidad |
-|---|---|
-| user-service | Usuarios, autenticación y roles |
-| restaurant-service | Restaurantes y propietarios |
-| dish-service | Catálogo de platos |
-| order-service | Pedidos, preparación, entrega y trazabilidad |
-
-Las URL definitivas de los cuatro repositorios deben incorporarse a esta sección.
-
----
-
-## 26. Resumen de ejecución
-
-Para iniciar el proyecto completo en un entorno local:
-
-**1. Iniciar MySQL.**
-
-**2. Configurar las conexiones y variables de los microservicios.**
-
-**3. Compilar cada microservicio:**
-
-```powershell
-.\mvnw.cmd clean package -DskipTests
-```
-
-**4. Ejecutar los cuatro JAR en terminales independientes:**
-
-```powershell
-java -Xms64m -Xmx256m -jar .\target\NOMBRE_JAR.jar
-```
-
-**5. Iniciar Angular:**
-
-```powershell
-npm install
-npx ng serve
-```
-
-**6. Abrir el sistema:**
-
-http://localhost:4200
-
-**7. Autenticarse con un usuario válido y realizar las pruebas funcionales correspondientes.**
-
----
-
-## 27. Conclusión
+## 22. Conclusión
 
 Plaza de Comidas integra una aplicación frontend Angular con un backend de cuatro microservicios desarrollados con Java y Spring Boot.
 
@@ -1216,3 +1049,15 @@ La aplicación proporciona operaciones diferenciadas para administradores, propi
 La implementación incorpora seguridad mediante JWT, persistencia MySQL, documentación de API con Swagger y funcionalidades de trazabilidad para facilitar el seguimiento de las operaciones.
 
 El proyecto constituye una solución modular que puede extenderse con nuevas capacidades sin concentrar todas las responsabilidades en una única aplicación.
+
+
+
+## Documentación técnica complementaria
+
+| Documento | Descripción |
+|---|---|
+| [Arquitectura del sistema](docs/ARQUITECTURA.md) | Arquitectura hexagonal, microservicios, componentes, comunicación, seguridad y decisiones arquitectónicas. |
+| [Base de datos](docs/BASE-DE-DATOS.md) | Esquemas MySQL, diccionario de datos, relaciones, restricciones, índices, configuración y persistencia. |
+| [API REST](docs/API-REST.md) | Endpoints, métodos HTTP, autenticación, autorización, parámetros, solicitudes, respuestas y ejemplos de consumo. |
+| [Pruebas automatizadas](docs/PRUEBAS.md) | Estrategia de pruebas, aislamiento mediante H2, ejecución, resultados, evidencias y validación funcional. |
+| [Manual de usuario](docs/MANUAL-USUARIO.md) | Guía funcional por roles, gestión de pedidos, notificaciones SMS y procedimiento de evaluación integral. |
