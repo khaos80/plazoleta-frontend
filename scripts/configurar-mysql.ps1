@@ -65,28 +65,37 @@ Write-Host "Cliente MySQL localizado: $MySqlExe"
 if (-not $Servicio) {
 
     $services = @(
-        Get-Service | Where-Object {
-            $_.Name -like '*mysql*'
-        }
+        Get-Service -Name '*mysql*' -ErrorAction SilentlyContinue
     )
 
     if ($services.Count -ne 1) {
-        throw 'Indique -Servicio con el nombre del servicio MySQL.'
+        throw 'No se encontro un servicio MySQL unico. Indique -Servicio con el nombre del servicio MySQL.'
     }
 
     $Servicio = $services[0].Name
 }
 
-if ((Get-Service -Name $Servicio).Status -ne 'Running') {
+$servicioMySql = Get-Service `
+    -Name $Servicio `
+    -ErrorAction Stop
+
+if ($servicioMySql.Status -ne 'Running') {
 
     Write-Host "Iniciando servicio $Servicio..."
 
-    Start-Service -Name $Servicio
+    try {
 
-    (Get-Service -Name $Servicio).WaitForStatus(
-        'Running',
-        [TimeSpan]::FromSeconds(30)
-    )
+        Start-Service -Name $Servicio -ErrorAction Stop
+
+        $servicioMySql.WaitForStatus(
+            'Running',
+            [TimeSpan]::FromSeconds(30)
+        )
+
+    }
+    catch {
+        throw "No se pudo iniciar el servicio $Servicio. Solicite al administrador de Windows que inicie el servicio MySQL. Detalle: $($_.Exception.Message)"
+    }
 }
 
 Write-Host "Servicio MySQL activo: $Servicio"
